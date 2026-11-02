@@ -1,0 +1,8 @@
+.DS_Store
+**/DerivedData/
+**/build/
+**/xcuserdata/
+*.xcuserstate
+
+# Android is maintained in a separate repository.
+/android/
