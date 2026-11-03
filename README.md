@@ -14,7 +14,7 @@ This repository contains only the iOS app. Android is maintained separately in t
 2. Select the Ganesham scheme and an iPhone simulator.
 3. Press Command-R.
 
-The internal project and target names remain Ganesham; the home screen uses PropertyLens branding. The current prototype includes property creation, locally saved property details, and placeholder call screens. Live calling, compass readings, and measurement capture are not connected yet.
+The internal project and target names remain Ganesham; the home screen uses PropertyLens branding. The prototype includes locally saved property details, offline rear-camera walkthrough recording, a live compass, and shared video exports with a compact compass and degree overlay. Call screens remain placeholders; live calling and measurement capture are not connected yet.
 
 ## Build
 
@@ -22,7 +22,7 @@ The internal project and target names remain Ganesham; the home screen uses Prop
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios/Ganesham.xcodeproj -scheme Ganesham -sdk iphonesimulator -configuration Debug -derivedDataPath /tmp/PropertyLensDerivedData CODE_SIGNING_ALLOWED=NO build
 ```
 
-Requires Xcode and iOS 17 or later. Review the placeholder `com.ganesham.app` bundle identifier before distribution.
+Requires Xcode and iOS 17 or later. The current bundle identifier is `com.infinity-propview.app`; review signing and distribution settings before release.
 
 ## Approved UI themes
 

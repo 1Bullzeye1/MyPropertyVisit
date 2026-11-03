@@ -79,6 +79,9 @@ struct ContentView: View {
                                        startPoint: .topLeading, endPoint: .bottomTrailing),
                         in: RoundedRectangle(cornerRadius: 26)
                     )
+                    NavigationLink { WalkthroughView() } label: {
+                        row("Record walkthrough", "Save video with compass readings offline", "video.circle")
+                    }
                     Text("Take a closer look").font(.title3.bold()).foregroundStyle(Palette.ink)
                     VStack(spacing: 14) {
                         Button { create = true } label: {
@@ -199,7 +202,7 @@ private struct PropertyDetails: View {
             }
             Section("Tour tools") {
                 Label("Video call · Coming soon", systemImage: "video")
-                Label("Compass · Coming soon", systemImage: "safari")
+                NavigationLink { WalkthroughView(propertyID: property.id.uuidString) } label: { Label("Record walkthrough with compass", systemImage: "video.circle") }
                 Label("Measurements · Coming soon", systemImage: "ruler")
             }
             Section { Text("No measurements have been captured.").foregroundStyle(.secondary) }
