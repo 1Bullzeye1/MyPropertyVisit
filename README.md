@@ -1,5 +1,7 @@
 # PropertyLens for iOS
 
+PropertyLens is a new way of experiencing Real Estate with additional feature such as compass for Direction clarity
+
 Native iOS app for property visits, including planned video calling, compass directions, measurements, and offline walkthroughs.
 
 ## Repository
