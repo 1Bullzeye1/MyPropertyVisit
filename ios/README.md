@@ -43,4 +43,16 @@ Record while changing direction, stop, open playback, and choose **Share video w
 
 ## Baseline verification and follow-up
 
-The user has tested and accepted the recording UI, compass, offline playback, and sharing flow on their iPhone. The broader interruption, low-storage, and accuracy checklist above remains to be completed. Simulator and unsigned device builds pass. Three Swift concurrency warnings remain around recorder state, the compass image cache, and the export session; resolving them is the next maintenance task. iPad is configured portrait-only with full-screen requested; physical iPad verification is pending.
+The user has tested and accepted the recording UI, compass, offline playback, and sharing flow on their iPhone. The broader interruption, low-storage, and accuracy checklist above remains to be completed. Simulator and unsigned device builds pass. The recorder, cache, and export-session concurrency warnings have been resolved. UI state is main-actor isolated; capture operations belong to a dedicated camera actor. The only unchecked Sendable bridges are the preview-session reference (AVFoundation preview binding only) and an explicitly locked cache of immutable CIImages. Export-session access stays on the main actor. Complete concurrency checking is enabled in Debug and Release. iPad is configured portrait-only with full-screen requested; physical iPad verification is pending.
+
+## Stability regression checks
+
+With an iOS simulator booted, run from the repository root:
+
+```sh
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer scripts/check-compass.sh
+```
+
+This compiles the actual compass renderer and locked cache into a simulator check executable. It checks 2,000 concurrent cache operations, all four cardinal headings and unavailable rendering, and timestamped compass metadata encoding/decoding. Optionally pass a simulator UDID as the first argument.
+
+Simulator and unsigned device builds pass with complete Swift concurrency checking. The App Intents metadata tool may emit an unrelated warning because this app has no App Intents integration. After the actor refactor, repeat recording, stop/save, reopening preview after playback, interruption/backgrounding and compass sharing on a physical iPhone before merging to main. These physical-device regression checks have not been run by the agent.

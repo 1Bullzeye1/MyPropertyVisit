@@ -5,13 +5,13 @@ import CoreLocation
 import CoreImage
 import UIKit
 
-struct HeadingSample: Codable {
+struct HeadingSample: Codable, Sendable {
     let seconds: Double
     let degrees: Double
     let accuracy: Double
 }
 
-struct Walkthrough: Codable, Identifiable {
+struct Walkthrough: Codable, Identifiable, Sendable {
     var id: String
     var created: Date
     var propertyID: String?
@@ -33,17 +33,122 @@ struct Walkthrough: Codable, Identifiable {
     }
 }
 
-final class WalkthroughRecorder: NSObject, ObservableObject, CLLocationManagerDelegate, AVCaptureFileOutputRecordingDelegate {
+// The capture session is shared only to attach AVFoundation's preview layer on
+// the main actor. All session configuration and start/stop operations belong to
+// CameraEngine. No mutable application state is stored in this bridge.
+private final class CameraPreviewSource: @unchecked Sendable {
     let session = AVCaptureSession()
-    private let queue = DispatchQueue(label: "propertylens.camera")
+}
+
+private enum CameraEvent: Sendable {
+    case started(Date)
+    case finished(success: Bool, message: String?)
+}
+
+// Blocking AVFoundation capture operations run on this actor, never the UI actor.
+private actor CameraEngine: NSObject, AVCaptureFileOutputRecordingDelegate {
+    private let preview: CameraPreviewSource
     private let output = AVCaptureMovieFileOutput()
+    private let event: @Sendable (CameraEvent) -> Void
+    private var configured = false
+    private var stopRequested = false
+
+    init(preview: CameraPreviewSource, event: @escaping @Sendable (CameraEvent) -> Void) {
+        self.preview = preview
+        self.event = event
+    }
+
+    func prepare() throws {
+        let session = preview.session
+        if !configured {
+            guard let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else {
+                throw NSError(domain: "PropertyLens.Camera", code: 1,
+                    userInfo: [NSLocalizedDescriptionKey: "Camera unavailable. Recording requires a physical iPhone."])
+            }
+            let input = try AVCaptureDeviceInput(device: camera)
+            session.beginConfiguration()
+            defer { session.commitConfiguration() }
+            session.sessionPreset = .high
+            guard session.canAddInput(input) else {
+                throw NSError(domain: "PropertyLens.Camera", code: 2,
+                    userInfo: [NSLocalizedDescriptionKey: "Unable to configure the camera input."])
+            }
+            session.addInput(input)
+            guard session.canAddOutput(output) else {
+                session.removeInput(input)
+                throw NSError(domain: "PropertyLens.Camera", code: 3,
+                    userInfo: [NSLocalizedDescriptionKey: "Unable to configure video recording."])
+            }
+            session.addOutput(output)
+            if let connection = output.connection(with: .video), connection.isVideoRotationAngleSupported(90) {
+                connection.videoRotationAngle = 90
+            }
+            configured = true
+        }
+        if !session.isRunning { session.startRunning() }
+    }
+
+    func start(to url: URL) {
+        stopRequested = false
+        output.startRecording(to: url, recordingDelegate: self)
+    }
+
+    func stop() {
+        stopRequested = true
+        if output.isRecording { output.stopRecording() }
+    }
+
+    func shutdown() {
+        stop()
+        if preview.session.isRunning { preview.session.stopRunning() }
+    }
+
+    nonisolated func fileOutput(_ output: AVCaptureFileOutput, didStartRecordingTo fileURL: URL, from connections: [AVCaptureConnection]) {
+        let date = Date()
+        Task { await didStart(at: date) }
+    }
+
+    private func didStart(at date: Date) {
+        event(.started(date))
+        if stopRequested { output.stopRecording() }
+    }
+
+    nonisolated func fileOutput(_ output: AVCaptureFileOutput, didFinishRecordingTo fileURL: URL, from connections: [AVCaptureConnection], error: Error?) {
+        let nsError = error as NSError?
+        let success = error == nil || nsError?.userInfo[AVErrorRecordingSuccessfullyFinishedKey] as? Bool == true
+        let message = error?.localizedDescription
+        // Only immutable values cross from the delegate callback to the actor.
+        Task { await didFinish(success: success, message: message) }
+    }
+
+    private func didFinish(success: Bool, message: String?) {
+        event(.finished(success: success, message: message))
+    }
+}
+
+private struct CompassReading: Sendable {
+    let magneticHeading: Double
+    let headingAccuracy: Double
+    let timestamp: Date
+}
+
+@MainActor
+final class WalkthroughRecorder: NSObject, ObservableObject, CLLocationManagerDelegate {
+    private let preview = CameraPreviewSource()
+    var session: AVCaptureSession { preview.session }
+    private lazy var camera = CameraEngine(preview: preview) { [weak self] event in
+        Task { @MainActor in self?.handle(event) }
+    }
     private let location = CLLocationManager()
     private var started: Date?
     private var pending: Walkthrough?
+    private var preparing = false
+    private var wantsCamera = false
+    private var stopRequested = false
     @Published var ready = false
     @Published var recording = false
     @Published var busy = false
-    @Published var heading: CLHeading?
+    @Published fileprivate var heading: CompassReading?
     @Published var message = "Preparing camera…"
     @Published var error: String?
     @Published var refresh = UUID()
@@ -54,109 +159,104 @@ final class WalkthroughRecorder: NSObject, ObservableObject, CLLocationManagerDe
         location.headingFilter = 2
         location.headingOrientation = .portrait
     }
+
     func prepare() {
-        if ready {
-            if CLLocationManager.headingAvailable() { location.startUpdatingHeading() }
-            queue.async { if !self.session.isRunning { self.session.startRunning() } }
-            return
-        }
-        guard CLLocationManager.headingAvailable() else {
+        wantsCamera = true
+        guard !preparing else { return }
+        preparing = true
+        if CLLocationManager.headingAvailable() {
+            location.startUpdatingHeading()
+            message = "Hold iPhone upright. Compass follows the top edge of your phone, relative to magnetic north."
+        } else {
             message = "Compass unavailable. Use a physical iPhone to test camera and compass."
-            configureCamera()
-            return
         }
-        location.startUpdatingHeading()
-        message = "Hold iPhone upright. Compass follows the top edge of your phone, relative to magnetic north."
-        configureCamera()
-    }
-    private func configureCamera() {
-        Task { @MainActor in
+        Task {
+            defer { preparing = false }
             let allowed = await AVCaptureDevice.requestAccess(for: .video)
+            guard wantsCamera else { return }
             guard allowed else {
-                self.message = "Camera access is off. Enable it in Settings to record a walkthrough."
+                ready = false
+                message = "Camera access is off. Enable it in Settings to record a walkthrough."
                 return
             }
-            queue.async {
-                do {
-                    guard let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else {
-                        DispatchQueue.main.async { self.message = "Camera unavailable. Recording requires a physical iPhone." }
-                        return
-                    }
-                    self.session.beginConfiguration()
-                    self.session.sessionPreset = .high
-                    let input = try AVCaptureDeviceInput(device: camera)
-                    guard self.session.canAddInput(input), self.session.canAddOutput(self.output) else {
-                        self.session.commitConfiguration()
-                        throw NSError(domain: "Camera", code: 1, userInfo: [NSLocalizedDescriptionKey: "Unable to configure the camera."])
-                    }
-                    self.session.addInput(input)
-                    self.session.addOutput(self.output)
-                    if let connection = self.output.connection(with: .video), connection.isVideoRotationAngleSupported(90) {
-                        connection.videoRotationAngle = 90
-                    }
-                    self.session.commitConfiguration()
-                    self.session.startRunning()
-                    DispatchQueue.main.async { self.ready = true }
-                } catch { DispatchQueue.main.async { self.error = error.localizedDescription } }
+            do {
+                try await camera.prepare()
+                guard wantsCamera else { await camera.shutdown(); return }
+                ready = true
+            } catch {
+                ready = false
+                message = error.localizedDescription
             }
         }
     }
+
     func start(propertyID: String?) {
         guard ready, !busy, !recording else { return }
         do {
             try FileManager.default.createDirectory(at: Walkthrough.directory, withIntermediateDirectories: true)
             let item = Walkthrough(id: UUID().uuidString, created: Date(), propertyID: propertyID, headings: [])
             pending = item
+            stopRequested = false
             busy = true
-            queue.async { self.output.startRecording(to: item.movie, recordingDelegate: self) }
+            Task { await camera.start(to: item.movie) }
         } catch { self.error = error.localizedDescription }
     }
+
     func stop() {
-        guard recording, !busy else { return }
+        stopRequested = true
+        guard recording || busy else { return }
         busy = true
-        queue.async { if self.output.isRecording { self.output.stopRecording() } }
+        Task { await camera.stop() }
     }
+
     func shutdown() {
+        wantsCamera = false
         stop()
+        ready = false
         location.stopUpdatingHeading()
-        queue.async { if self.session.isRunning { self.session.stopRunning() } }
+        Task { await camera.shutdown() }
     }
-    func fileOutput(_ output: AVCaptureFileOutput, didStartRecordingTo fileURL: URL, from connections: [AVCaptureConnection]) {
-        DispatchQueue.main.async {
-            self.started = Date()
-            self.recording = true
-            self.busy = false
-            if UIApplication.shared.applicationState != .active { self.stop() }
-            if let heading = self.heading { self.append(heading) }
-        }
-    }
-    func fileOutput(_ output: AVCaptureFileOutput, didFinishRecordingTo fileURL: URL, from connections: [AVCaptureConnection], error: Error?) {
-        DispatchQueue.main.async {
-            defer { self.recording = false; self.busy = false; self.started = nil; self.pending = nil }
-            let nsError = error as NSError?
-            let success = error == nil || nsError?.userInfo[AVErrorRecordingSuccessfullyFinishedKey] as? Bool == true
-            guard success, let item = self.pending else {
-                self.error = error?.localizedDescription ?? "Recording could not be saved."
+
+    private func handle(_ event: CameraEvent) {
+        switch event {
+        case .started(let date):
+            started = date
+            recording = true
+            busy = false
+            if stopRequested || !wantsCamera || UIApplication.shared.applicationState != .active { stop() }
+            if let heading { append(heading) }
+        case .finished(let success, let failure):
+            defer { recording = false; busy = false; started = nil; pending = nil }
+            guard success, let item = pending else {
+                error = failure ?? "Recording could not be saved."
                 return
             }
             do {
                 try JSONEncoder().encode(item).write(to: item.metadata, options: .atomic)
-                self.refresh = UUID()
+                refresh = UUID()
             } catch { self.error = "Video saved, but its compass details could not be saved: \(error.localizedDescription)" }
         }
     }
-    func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
-        guard newHeading.headingAccuracy >= 0 else { heading = nil; return }
-        heading = newHeading
-        append(newHeading)
+
+    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
+        let reading = CompassReading(magneticHeading: newHeading.magneticHeading,
+            headingAccuracy: newHeading.headingAccuracy, timestamp: newHeading.timestamp)
+        Task { @MainActor in
+            guard reading.headingAccuracy >= 0 else { self.heading = nil; return }
+            self.heading = reading
+            self.append(reading)
+        }
     }
-    private func append(_ value: CLHeading) {
+
+    private func append(_ value: CompassReading) {
         guard let started, recording else { return }
-        pending?.headings.append(HeadingSample(seconds: max(0, value.timestamp.timeIntervalSince(started)), degrees: value.magneticHeading, accuracy: value.headingAccuracy))
+        pending?.headings.append(HeadingSample(seconds: max(0, value.timestamp.timeIntervalSince(started)),
+            degrees: value.magneticHeading, accuracy: value.headingAccuracy))
     }
-    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        heading = nil
-        message = "Compass unavailable: \(error.localizedDescription)"
+
+    nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        let message = error.localizedDescription
+        Task { @MainActor in self.heading = nil; self.message = "Compass unavailable: \(message)" }
     }
 }
 
@@ -343,11 +443,10 @@ private struct WalkthroughShareSheet: UIViewControllerRepresentable {
 }
 
 private enum CompassVideoExporter {
-    static func export(_ clip: Walkthrough) async throws -> URL {
+    @MainActor static func export(_ clip: Walkthrough) async throws -> URL {
         let asset = AVURLAsset(url: clip.movie)
         // AVFoundation supplies oriented frames, preserving the source movie's rotation.
-        let cache = NSCache<NSString, CIImage>()
-        cache.countLimit = 32
+        let cache = CompassImageCache()
         let headings = clip.headings.sorted { $0.seconds < $1.seconds }
         let composition = AVVideoComposition(asset: asset) { request in
             let seconds = request.compositionTime.seconds
@@ -384,16 +483,7 @@ private enum CompassVideoExporter {
         exporter.outputFileType = type
         exporter.videoComposition = composition
         exporter.shouldOptimizeForNetworkUse = true
-        return try await withCheckedThrowingContinuation { continuation in
-            exporter.exportAsynchronously {
-                if exporter.status == .completed { continuation.resume(returning: url) }
-                else {
-                    try? FileManager.default.removeItem(at: url)
-                    continuation.resume(throwing: exporter.error ?? NSError(domain: "PropertyLens.Export", code: 3,
-                        userInfo: [NSLocalizedDescriptionKey: "Video export was interrupted. Please try again."]))
-                }
-            }
-        }
+        return try await VideoExportOperation(exporter: exporter).run(to: url)
     }
 }
 
@@ -481,5 +571,43 @@ private struct CompassDial: View {
         Image(uiImage: CompassDialArtwork.image(bearing: bearing))
             .resizable().frame(width: 80, height: 98)
             .accessibilityLabel(bearing.map { "Magnetic bearing \(Int($0)) degrees" } ?? "Compass unavailable")
+    }
+}
+
+// NSCache access is guarded explicitly; cached CIImages are immutable. The cache
+// never exposes its mutable storage to concurrent video frame callbacks.
+private final class CompassImageCache: @unchecked Sendable {
+    private let lock = NSLock()
+    private let storage = NSCache<NSString, CIImage>()
+    init() { storage.countLimit = 32 }
+    func object(forKey key: NSString) -> CIImage? {
+        lock.lock(); defer { lock.unlock() }
+        return storage.object(forKey: key)
+    }
+    func setObject(_ image: CIImage, forKey key: NSString) {
+        lock.lock(); defer { lock.unlock() }
+        storage.setObject(image, forKey: key)
+    }
+}
+
+// The legacy iOS 17 callback captures this main-actor owner, rather than passing
+// the non-Sendable AVAssetExportSession into a concurrent closure.
+@MainActor
+private final class VideoExportOperation {
+    private let exporter: AVAssetExportSession
+    init(exporter: AVAssetExportSession) { self.exporter = exporter }
+    func run(to url: URL) async throws -> URL {
+        try await withCheckedThrowingContinuation { continuation in
+            exporter.exportAsynchronously { [self] in
+                Task { @MainActor in
+                    if exporter.status == .completed { continuation.resume(returning: url) }
+                    else {
+                        try? FileManager.default.removeItem(at: url)
+                        continuation.resume(throwing: exporter.error ?? NSError(domain: "PropertyLens.Export", code: 3,
+                            userInfo: [NSLocalizedDescriptionKey: "Video export was interrupted. Please try again."]))
+                    }
+                }
+            }
+        }
     }
 }
