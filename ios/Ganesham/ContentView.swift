@@ -81,15 +81,15 @@ struct ContentView: View {
                     )
                     NavigationLink { WalkthroughView() } label: {
                         row("Record walkthrough", "Save video with compass readings offline", "video.circle")
-                    }
+                    }.buttonStyle(.plain)
                     Text("Take a closer look").font(.title3.bold()).foregroundStyle(Palette.ink)
                     VStack(spacing: 14) {
                         Button { create = true } label: {
                             row("Start a property call", "Prepare your property for a tour", "video.badge.plus", primary: true)
-                        }
+                        }.buttonStyle(.plain)
                         Button { join = true } label: {
                             row("Join a call", "Enter an invitation code", "person.2")
-                        }
+                        }.buttonStyle(.plain)
                         NavigationLink {
                             List {
                                 if properties.isEmpty {
@@ -111,7 +111,7 @@ struct ContentView: View {
                             }.navigationTitle("Saved properties")
                         } label: {
                             row("Saved properties", "\(properties.count) saved on this device", "square.stack")
-                        }
+                        }.buttonStyle(.plain)
                     }
                     Text("Built for a better-informed property visit.")
                         .font(.footnote).foregroundStyle(.secondary)
@@ -121,6 +121,8 @@ struct ContentView: View {
             .background(Palette.background)
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Palette.background, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .sheet(isPresented: $create) {
                 PrepareProperty { property in store([property] + properties) }
             }
@@ -143,6 +145,8 @@ struct ContentView: View {
             Image(systemName: "arrow.up.right").font(.subheadline)
         }
         .multilineTextAlignment(.leading).padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(RoundedRectangle(cornerRadius: 20))
         .foregroundStyle(primary ? .white : Palette.ink)
         .background(primary ? Palette.primaryAction : Palette.surface, in: RoundedRectangle(cornerRadius: 20))
         .overlay {
