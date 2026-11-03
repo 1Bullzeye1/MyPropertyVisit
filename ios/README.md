@@ -1,17 +1,17 @@
 # PropertyLens for iOS
 
-1. Open `Ganesham.xcodeproj` in Xcode.
-2. Select the Ganesham scheme and an installed iPhone simulator.
+1. Open `PropertyLens.xcodeproj` in Xcode.
+2. Select the PropertyLens scheme and an installed iPhone simulator.
 3. Press Run (Command-R).
 
-The app uses SwiftUI and supports iOS 17 and later. Home and property screens are in `Ganesham/ContentView.swift`; recording, compass, playback, and export are in `Ganesham/WalkthroughView.swift`.
+The app uses SwiftUI and supports iOS 17 and later. Home and property screens are in `PropertyLens/ContentView.swift`; recording, compass, playback, and export are in `PropertyLens/WalkthroughView.swift`.
 
 For a physical device, select your development team in Signing & Capabilities and use an appropriate bundle identifier.
 
 Command-line build from the repository root:
 
 ```sh
-DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios/Ganesham.xcodeproj -scheme Ganesham -sdk iphonesimulator -configuration Debug -derivedDataPath /tmp/GaneshamDerivedData CODE_SIGNING_ALLOWED=NO build
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project ios/PropertyLens.xcodeproj -scheme PropertyLens -sdk iphonesimulator -configuration Debug -derivedDataPath /tmp/PropertyLensDerivedData CODE_SIGNING_ALLOWED=NO build
 ```
 
 If Xcode reports an unaccepted license, open Xcode and complete its license and first-launch setup before building. Subsequent simulator and unsigned physical-device builds have passed.
@@ -56,3 +56,7 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer scripts/check-compass.s
 This compiles the actual compass renderer and locked cache into a simulator check executable. It checks 2,000 concurrent cache operations, all four cardinal headings and unavailable rendering, and timestamped compass metadata encoding/decoding. Optionally pass a simulator UDID as the first argument.
 
 Simulator and unsigned device builds pass with complete Swift concurrency checking. The App Intents metadata tool may emit an unrelated warning because this app has no App Intents integration. After the actor refactor, repeat recording, stop/save, reopening preview after playback, interruption/backgrounding and compass sharing on a physical iPhone before merging to main. These physical-device regression checks have not been run by the agent.
+
+## Settings
+
+Open the gear button on Home. Display offers System, Light and Dark; the selected appearance persists across launches. Account offers an editable device-local name, optional email and Buyer/Seller/Broker role, with a clear-profile action that preserves property records and walkthroughs. This is not online authentication: sign-in, account switching and cloud sync remain unimplemented.

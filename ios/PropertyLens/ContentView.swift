@@ -57,8 +57,16 @@ struct ContentView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 26) {
-                    Label("PropertyLens", systemImage: "viewfinder")
-                        .font(.title2.bold()).foregroundStyle(Palette.accent)
+                    HStack {
+                        Label("PropertyLens", systemImage: "viewfinder")
+                            .font(.title2.bold()).foregroundStyle(Palette.accent)
+                        Spacer()
+                        NavigationLink { LensSettingsView() } label: {
+                            Image(systemName: "gearshape").font(.title3)
+                                .frame(width: 44, height: 44)
+                                .background(Palette.surface, in: Circle())
+                        }.buttonStyle(.plain).accessibilityLabel("Settings")
+                    }
                     VStack(alignment: .leading, spacing: 18) {
                         Text("A CLEARER VIEW").font(.caption.weight(.semibold)).tracking(3)
                             .foregroundStyle(Palette.heroEyebrow)
@@ -232,6 +240,83 @@ private struct JoinPropertyCall: View {
             }
             .navigationTitle("Join a property call").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
+        }
+    }
+}
+
+private struct LensSettingsView: View {
+    @AppStorage("propertylens.theme.v1") private var theme = "system"
+    var body: some View {
+        Form {
+            Section("Account") {
+                NavigationLink { LocalProfileView() } label: {
+                    Label("Manage local profile", systemImage: "person.crop.circle")
+                }
+                LabeledContent("Account status", value: "Not signed in")
+                Text("Sign-in, account switching and cloud sync are not connected yet. Your local profile stays on this device and is not a verified account.")
+                    .font(.footnote).foregroundStyle(.secondary)
+            }
+            Section("Display") {
+                Picker("Theme", selection: $theme) {
+                    Text("System").tag("system")
+                    Text("Light").tag("light")
+                    Text("Dark").tag("dark")
+                }
+                Text("System follows your device appearance. Your choice is remembered for this app.")
+                    .font(.footnote).foregroundStyle(.secondary)
+            }
+        }.navigationTitle("Settings").navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct LocalProfileView: View {
+    @AppStorage("propertylens.profile.name") private var storedName = ""
+    @AppStorage("propertylens.profile.email") private var storedEmail = ""
+    @AppStorage("propertylens.profile.role") private var storedRole = "Buyer"
+    @State private var name = ""
+    @State private var email = ""
+    @State private var role = "Buyer"
+    @State private var feedback: String?
+    @State private var confirmClear = false
+    var body: some View {
+        Form {
+            Section("Local profile") {
+                TextField("Display name (optional)", text: $name)
+                    .textContentType(.name)
+                TextField("Email (optional, not verified)", text: $email)
+                    .keyboardType(.emailAddress).textInputAutocapitalization(.never)
+                    .autocorrectionDisabled().textContentType(.emailAddress)
+                Picker("Role", selection: $role) {
+                    ForEach(["Buyer", "Seller", "Broker"], id: \.self) { Text($0) }
+                }
+            }
+            Section {
+                Button("Save profile") {
+                    let cleanEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard cleanEmail.isEmpty || (cleanEmail.contains("@") && !cleanEmail.contains(" ") && cleanEmail.split(separator: "@").count == 2) else {
+                        feedback = "Enter a valid email address or leave it empty."
+                        return
+                    }
+                    storedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+                    storedEmail = cleanEmail
+                    storedRole = role
+                    feedback = "Profile saved on this device."
+                }
+                Button("Clear local profile", role: .destructive) { confirmClear = true }
+            } footer: {
+                Text("These details do not sign you in or sync to a server. Clearing this profile keeps your saved properties and walkthroughs.")
+            }
+        }
+        .navigationTitle("Local profile").navigationBarTitleDisplayMode(.inline)
+        .onAppear { name = storedName; email = storedEmail; role = storedRole }
+        .alert("Profile", isPresented: Binding(get: { feedback != nil }, set: { if !$0 { feedback = nil } })) {
+            Button("OK") { feedback = nil }
+        } message: { Text(feedback ?? "") }
+        .confirmationDialog("Clear the local profile? Properties and recordings will be kept.", isPresented: $confirmClear, titleVisibility: .visible) {
+            Button("Clear profile", role: .destructive) {
+                storedName = ""; storedEmail = ""; storedRole = "Buyer"
+                name = ""; email = ""; role = "Buyer"
+            }
         }
     }
 }

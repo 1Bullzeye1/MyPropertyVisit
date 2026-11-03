@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "00000000000000000000000A"
-               BuildableName = "Ganesham.app"
-               BlueprintName = "Ganesham"
-               ReferencedContainer = "container:Ganesham.xcodeproj">
+               BuildableName = "PropertyLens.app"
+               BlueprintName = "PropertyLens"
+               ReferencedContainer = "container:PropertyLens.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -44,9 +44,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "00000000000000000000000A"
-            BuildableName = "Ganesham.app"
-            BlueprintName = "Ganesham"
-            ReferencedContainer = "container:Ganesham.xcodeproj">
+            BuildableName = "PropertyLens.app"
+            BlueprintName = "PropertyLens"
+            ReferencedContainer = "container:PropertyLens.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -61,9 +61,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "00000000000000000000000A"
-            BuildableName = "Ganesham.app"
-            BlueprintName = "Ganesham"
-            ReferencedContainer = "container:Ganesham.xcodeproj">
+            BuildableName = "PropertyLens.app"
+            BlueprintName = "PropertyLens"
+            ReferencedContainer = "container:PropertyLens.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

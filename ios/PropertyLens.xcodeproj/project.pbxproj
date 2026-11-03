@@ -7,14 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		000000000000000000000008 /* GaneshamApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000006 /* GaneshamApp.swift */; };
+		000000000000000000000008 /* PropertyLensApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000006 /* PropertyLensApp.swift */; };
 		000000000000000000000009 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000007 /* ContentView.swift */; };
 		000000000000000000000021 /* WalkthroughView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000020 /* WalkthroughView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		000000000000000000000005 /* Ganesham.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Ganesham.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		000000000000000000000006 /* GaneshamApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GaneshamApp.swift; sourceTree = "<group>"; };
+		000000000000000000000005 /* PropertyLens.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PropertyLens.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		000000000000000000000006 /* PropertyLensApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PropertyLensApp.swift; sourceTree = "<group>"; };
 		000000000000000000000007 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		000000000000000000000020 /* WalkthroughView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkthroughView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -33,25 +33,25 @@
 		000000000000000000000002 = {
 			isa = PBXGroup;
 			children = (
-				000000000000000000000003 /* Ganesham */,
+				000000000000000000000003 /* PropertyLens */,
 				000000000000000000000004 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		000000000000000000000003 /* Ganesham */ = {
+		000000000000000000000003 /* PropertyLens */ = {
 			isa = PBXGroup;
 			children = (
 				000000000000000000000020 /* WalkthroughView.swift */,
-				000000000000000000000006 /* GaneshamApp.swift */,
+				000000000000000000000006 /* PropertyLensApp.swift */,
 				000000000000000000000007 /* ContentView.swift */,
 			);
-			path = Ganesham;
+			path = PropertyLens;
 			sourceTree = "<group>";
 		};
 		000000000000000000000004 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				000000000000000000000005 /* Ganesham.app */,
+				000000000000000000000005 /* PropertyLens.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -59,9 +59,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		00000000000000000000000A /* Ganesham */ = {
+		00000000000000000000000A /* PropertyLens */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 00000000000000000000000F /* Build configuration list for PBXNativeTarget "Ganesham" */;
+			buildConfigurationList = 00000000000000000000000F /* Build configuration list for PBXNativeTarget "PropertyLens" */;
 			buildPhases = (
 				00000000000000000000000B /* Sources */,
 				00000000000000000000000C /* Frameworks */,
@@ -71,9 +71,9 @@
 			);
 			dependencies = (
 			);
-			name = Ganesham;
-			productName = Ganesham;
-			productReference = 000000000000000000000005 /* Ganesham.app */;
+			name = PropertyLens;
+			productName = PropertyLens;
+			productReference = 000000000000000000000005 /* PropertyLens.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -85,7 +85,7 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 2660;
 			};
-			buildConfigurationList = 00000000000000000000000E /* Build configuration list for PBXProject "Ganesham" */;
+			buildConfigurationList = 00000000000000000000000E /* Build configuration list for PBXProject "PropertyLens" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -98,7 +98,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				00000000000000000000000A /* Ganesham */,
+				00000000000000000000000A /* PropertyLens */,
 			);
 		};
 /* End PBXProject section */
@@ -119,7 +119,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				000000000000000000000021 /* WalkthroughView.swift in Sources */,
-				000000000000000000000008 /* GaneshamApp.swift in Sources */,
+				000000000000000000000008 /* PropertyLensApp.swift in Sources */,
 				000000000000000000000009 /* ContentView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -215,7 +215,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = Ganesham;
+				INFOPLIST_KEY_CFBundleDisplayName = PropertyLens;
 				INFOPLIST_KEY_NSCameraUsageDescription = "PropertyLens uses the rear camera to record property walkthroughs for offline playback.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -241,7 +241,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = Ganesham;
+				INFOPLIST_KEY_CFBundleDisplayName = PropertyLens;
 				INFOPLIST_KEY_NSCameraUsageDescription = "PropertyLens uses the rear camera to record property walkthroughs for offline playback.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -262,7 +262,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		00000000000000000000000E /* Build configuration list for PBXProject "Ganesham" */ = {
+		00000000000000000000000E /* Build configuration list for PBXProject "PropertyLens" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				000000000000000000000010 /* Debug */,
@@ -271,7 +271,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		00000000000000000000000F /* Build configuration list for PBXNativeTarget "Ganesham" */ = {
+		00000000000000000000000F /* Build configuration list for PBXNativeTarget "PropertyLens" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				000000000000000000000012 /* Debug */,
