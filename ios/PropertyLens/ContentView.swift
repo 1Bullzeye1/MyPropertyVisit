@@ -1,28 +1,30 @@
 import SwiftUI
 import UIKit
 
-private struct Property: Identifiable, Codable, Hashable {
+struct Property: Identifiable, Codable, Hashable, Sendable {
+    static let storageKey = "propertylens.properties.v1"
+
     var id = UUID()
     var name: String
     var type: String
     var location: String
 }
 
-private enum Palette {
-    // Light: indigo and lavender. Dark: slate, ocean blue, and warm sand.
-    static let accent = adaptive(0x6250C8, dark: 0x94C7ED)
-    static let primaryAction = adaptive(0x6250C8, dark: 0x295C7C)
-    static let ink = adaptive(0x25213D, dark: 0xE9EFF5)
-    static let background = adaptive(0xF6F5FB, dark: 0x111820)
-    static let surface = adaptive(0xFFFFFF, dark: 0x1B2632)
-    static let border = adaptive(0xE8E4F3, dark: 0x334352)
-    static let iconBackground = adaptive(0xEEEAFB, dark: 0x293B4A)
+enum Palette {
+    // Light: indigo and lavender. Dark: aubergine and lavender.
+    static let accent = adaptive(0x6250C8, dark: 0xC6B7FA)
+    static let primaryAction = adaptive(0x6250C8, dark: 0x5945A4)
+    static let ink = adaptive(0x25213D, dark: 0xF1ECFF)
+    static let background = adaptive(0xF6F5FB, dark: 0x120F20)
+    static let surface = adaptive(0xFFFFFF, dark: 0x201A32)
+    static let border = adaptive(0xE8E4F3, dark: 0x423453)
+    static let iconBackground = adaptive(0xEEEAFB, dark: 0x332747)
     static let coral = adaptive(0xBF4257, dark: 0xE6BC92)
-    static let heroStart = adaptive(0x282148, dark: 0x233A4B)
-    static let heroEnd = adaptive(0x514184, dark: 0x31566A)
+    static let heroStart = adaptive(0x282148, dark: 0x282044)
+    static let heroEnd = adaptive(0x514184, dark: 0x493675)
     static let heroEyebrow = Color(uiColor: UIColor { traits in
         traits.userInterfaceStyle == .dark
-            ? UIColor(rgb: 0xB6D8EB)
+            ? UIColor(rgb: 0xDBD0FB)
             : UIColor(red: 0.86, green: 0.81, blue: 1, alpha: 1)
     })
 
@@ -42,15 +44,19 @@ private extension UIColor {
 }
 
 struct ContentView: View {
-    @AppStorage("propertylens.properties.v1") private var saved = "[]"
+    private enum MediaRoute: Hashable { case recorder, library }
+    @State private var properties: [Property]
     @State private var create = false
     @State private var join = false
-    private var properties: [Property] {
-        (try? JSONDecoder().decode([Property].self, from: Data(saved.utf8))) ?? []
+
+    init(properties: [Property]) {
+        _properties = State(initialValue: properties)
     }
+
     private func store(_ values: [Property]) {
         if let data = try? JSONEncoder().encode(values), let json = String(data: data, encoding: .utf8) {
-            saved = json
+            UserDefaults.standard.set(json, forKey: Property.storageKey)
+            properties = values
         }
     }
     var body: some View {
@@ -58,8 +64,16 @@ struct ContentView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 26) {
                     HStack {
-                        Label("PropertyLens", systemImage: "viewfinder")
-                            .font(.title2.bold()).foregroundStyle(Palette.accent)
+                        HStack(spacing: 10) {
+                            Image(decorative: "BrandMark")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 36, height: 36)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                            Text("PropertyLens")
+                                .font(.title2.bold())
+                                .foregroundStyle(Palette.ink)
+                        }
                         Spacer()
                         NavigationLink { LensSettingsView() } label: {
                             Image(systemName: "gearshape").font(.title3)
@@ -87,9 +101,14 @@ struct ContentView: View {
                                        startPoint: .topLeading, endPoint: .bottomTrailing),
                         in: RoundedRectangle(cornerRadius: 26)
                     )
-                    NavigationLink { WalkthroughView() } label: {
-                        row("Record walkthrough", "Save video with compass readings offline", "video.circle")
-                    }.buttonStyle(.plain)
+                    VStack(spacing: 12) {
+                        NavigationLink(value: MediaRoute.recorder) {
+                            row("Record walkthrough", "Capture video with compass and take photos", "video.circle", primary: true)
+                        }.buttonStyle(.plain)
+                        NavigationLink(value: MediaRoute.library) {
+                            row("Photos & videos", "Browse visits, videos and room measurements", "photo.on.rectangle")
+                        }.buttonStyle(.plain)
+                    }
                     Text("Take a closer look").font(.title3.bold()).foregroundStyle(Palette.ink)
                     VStack(spacing: 14) {
                         Button { create = true } label: {
@@ -99,24 +118,11 @@ struct ContentView: View {
                             row("Join a call", "Enter an invitation code", "person.2")
                         }.buttonStyle(.plain)
                         NavigationLink {
-                            List {
-                                if properties.isEmpty {
-                                    ContentUnavailableView("No saved properties", systemImage: "building.2", description: Text("Prepare a property to save its details here."))
-                                }
-                                ForEach(properties) { property in
-                                    NavigationLink { PropertyDetails(property: property) } label: {
-                                        VStack(alignment: .leading, spacing: 5) {
-                                            Text(property.name).font(.headline)
-                                            Text("\(property.type) · \(property.location)")
-                                                .font(.subheadline).foregroundStyle(.secondary)
-                                        }
-                                    }
-                                }.onDelete { offsets in
-                                    var values = properties
-                                    values.remove(atOffsets: offsets)
-                                    store(values)
-                                }
-                            }.navigationTitle("Saved properties")
+                            SavedPropertiesView(properties: properties) { offsets in
+                                var values = properties
+                                values.remove(atOffsets: offsets)
+                                store(values)
+                            }
                         } label: {
                             row("Saved properties", "\(properties.count) saved on this device", "square.stack")
                         }.buttonStyle(.plain)
@@ -127,6 +133,12 @@ struct ContentView: View {
                 }.padding(22)
             }
             .background(Palette.background)
+            .navigationDestination(for: MediaRoute.self) { route in
+                switch route {
+                case .recorder: WalkthroughView()
+                case .library: PropertyMediaLibrary()
+                }
+            }
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Palette.background, for: .navigationBar)
@@ -138,6 +150,26 @@ struct ContentView: View {
         }.tint(Palette.accent)
     }
     private func row(_ title: String, _ subtitle: String, _ symbol: String, primary: Bool = false) -> some View {
+        LensMenuRow(title, subtitle, symbol, primary: primary)
+    }
+}
+
+struct LensMenuRow: View {
+    let title: String
+    let subtitle: String
+    let symbol: String
+    let primary: Bool
+    let showsArrow: Bool
+
+    init(_ title: String, _ subtitle: String, _ symbol: String, primary: Bool = false, showsArrow: Bool = true) {
+        self.title = title
+        self.subtitle = subtitle
+        self.symbol = symbol
+        self.primary = primary
+        self.showsArrow = showsArrow
+    }
+
+    var body: some View {
         HStack(spacing: 16) {
             Image(systemName: symbol)
                 .font(.title3.weight(.semibold))
@@ -150,7 +182,7 @@ struct ContentView: View {
                 Text(subtitle).font(.caption).opacity(0.8)
             }
             Spacer(minLength: 0)
-            Image(systemName: "arrow.up.right").font(.subheadline)
+            if showsArrow { Image(systemName: "arrow.up.right").font(.subheadline) }
         }
         .multilineTextAlignment(.leading).padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -161,6 +193,89 @@ struct ContentView: View {
             RoundedRectangle(cornerRadius: 20)
                 .strokeBorder(primary ? .clear : Palette.border, lineWidth: 1)
         }
+    }
+}
+
+struct LensMenuHeader: View {
+    let title: String
+    let subtitle: String
+    let symbol: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Image(systemName: symbol)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(Palette.heroEyebrow)
+                .accessibilityHidden(true)
+            Text(title)
+                .font(.system(.title, design: .serif).weight(.medium))
+                .accessibilityAddTraits(.isHeader)
+            Text(subtitle)
+                .font(.subheadline)
+                .foregroundStyle(.white.opacity(0.85))
+        }
+        .padding(22)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .foregroundStyle(.white)
+        .background(
+            LinearGradient(colors: [Palette.heroStart, Palette.heroEnd], startPoint: .topLeading, endPoint: .bottomTrailing),
+            in: RoundedRectangle(cornerRadius: 24)
+        )
+    }
+}
+
+struct LensMenuPage<Content: View>: View {
+    let title: String
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 14, content: content)
+                .padding(22)
+        }
+        .background(Palette.background)
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Palette.background, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .tint(Palette.accent)
+    }
+}
+
+private struct SavedPropertiesView: View {
+    let properties: [Property]
+    let delete: (IndexSet) -> Void
+
+    var body: some View {
+        List {
+            LensMenuHeader(title: "Saved properties", subtitle: "Open a property to see its details and walkthroughs.", symbol: "building.2")
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 12, leading: 22, bottom: 10, trailing: 22))
+
+            if properties.isEmpty {
+                LensMenuRow("No saved properties", "Prepare a property to save its details here.", "building.2", showsArrow: false)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets(top: 5, leading: 22, bottom: 5, trailing: 22))
+            }
+            ForEach(properties) { property in
+                NavigationLink { PropertyDetails(property: property) } label: {
+                    LensMenuRow(property.name, "\(property.type) · \(property.location)", "building.2", showsArrow: false)
+                }
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 5, leading: 22, bottom: 5, trailing: 22))
+            }
+            .onDelete(perform: delete)
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(Palette.background)
+        .navigationTitle("Saved properties")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Palette.background, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
     }
 }
 
@@ -185,7 +300,7 @@ private struct PrepareProperty: View {
                 }
                 Section {
                     Label("Video calling is coming next", systemImage: "video")
-                    Text("Save your property now. Live calls, compass readings and measurement capture are not connected yet.")
+                    Text("Save your property now. Live calls are coming soon. You can already take photos, record compass walkthroughs and add room dimensions.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
                 Section {
@@ -215,9 +330,15 @@ private struct PropertyDetails: View {
             Section("Tour tools") {
                 Label("Video call · Coming soon", systemImage: "video")
                 NavigationLink { WalkthroughView(propertyID: property.id.uuidString) } label: { Label("Record walkthrough with compass", systemImage: "video.circle") }
-                Label("Measurements · Coming soon", systemImage: "ruler")
+                NavigationLink { RoomPhotoLibrary(propertyID: property.id.uuidString) } label: {
+                    Label("Room photos & dimensions", systemImage: "photo.on.rectangle")
+                }
             }
-            Section { Text("No measurements have been captured.").foregroundStyle(.secondary) }
+            Section("Saved media") {
+                NavigationLink { PropertyMediaLibrary(propertyID: property.id.uuidString) } label: {
+                    Label("Property photos & videos", systemImage: "photo.stack")
+                }
+            }
         }.navigationTitle(property.name).navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -247,25 +368,33 @@ private struct JoinPropertyCall: View {
 private struct LensSettingsView: View {
     @AppStorage("propertylens.theme.v1") private var theme = "system"
     var body: some View {
-        Form {
-            Section("Account") {
-                NavigationLink { LocalProfileView() } label: {
-                    Label("Manage local profile", systemImage: "person.crop.circle")
-                }
-                LabeledContent("Account status", value: "Not signed in")
-                Text("Sign-in, account switching and cloud sync are not connected yet. Your local profile stays on this device and is not a verified account.")
-                    .font(.footnote).foregroundStyle(.secondary)
-            }
-            Section("Display") {
+        LensMenuPage(title: "Settings") {
+            LensMenuHeader(title: "Make it yours", subtitle: "Manage your local profile and choose how PropertyLens looks.", symbol: "gearshape")
+
+            Text("Profile").font(.headline).foregroundStyle(Palette.ink).accessibilityAddTraits(.isHeader)
+            NavigationLink { LocalProfileView() } label: {
+                LensMenuRow("Manage local profile", "Edit the name, email and role stored on this device", "person.crop.circle")
+            }.buttonStyle(.plain)
+            Text("Account status: Not signed in")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+
+            Text("Appearance").font(.headline).foregroundStyle(Palette.ink).accessibilityAddTraits(.isHeader)
+            VStack(alignment: .leading, spacing: 12) {
+                Label("Theme", systemImage: "circle.lefthalf.filled").font(.headline).foregroundStyle(Palette.ink)
                 Picker("Theme", selection: $theme) {
                     Text("System").tag("system")
                     Text("Light").tag("light")
                     Text("Dark").tag("dark")
                 }
-                Text("System follows your device appearance. Your choice is remembered for this app.")
+                .pickerStyle(.segmented)
+                Text("System follows your device appearance.")
                     .font(.footnote).foregroundStyle(.secondary)
             }
-        }.navigationTitle("Settings").navigationBarTitleDisplayMode(.inline)
+            .padding(20)
+            .background(Palette.surface, in: RoundedRectangle(cornerRadius: 20))
+            .overlay { RoundedRectangle(cornerRadius: 20).strokeBorder(Palette.border) }
+        }
     }
 }
 

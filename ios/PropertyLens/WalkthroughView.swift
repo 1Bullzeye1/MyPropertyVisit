@@ -16,6 +16,7 @@ struct Walkthrough: Codable, Identifiable, Sendable {
     var created: Date
     var propertyID: String?
     var headings: [HeadingSample]
+    var sessionID: UUID? = nil
     static var directory: URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Walkthroughs", isDirectory: true)
@@ -33,6 +34,45 @@ struct Walkthrough: Codable, Identifiable, Sendable {
     }
 }
 
+struct CaptureVisit: Codable, Identifiable, Sendable {
+    var id: UUID
+    var propertyID: String?
+    var created: Date
+    var ended: Date?
+    var title: String { "Visit · " + created.formatted(date: .abbreviated, time: .standard) }
+    static var directory: URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("CaptureSessions", isDirectory: true)
+    }
+    func save(in directory: URL = Self.directory) throws {
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try JSONEncoder().encode(self).write(to: directory.appendingPathComponent(id.uuidString + ".json"), options: .atomic)
+    }
+    static func load(propertyID: String?, in directory: URL = Self.directory) throws -> [Self] {
+        guard FileManager.default.fileExists(atPath: directory.path) else { return [] }
+        return try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+            .filter { $0.pathExtension == "json" }.map { try JSONDecoder().decode(Self.self, from: Data(contentsOf: $0)) }
+            .filter { propertyID == nil || $0.propertyID == propertyID }.sorted { $0.created > $1.created }
+    }
+}
+
+// Anchor each active span to the movie's recorded duration; paused wall time is excluded.
+struct RecordingTimeline: Sendable {
+    private var anchor: Date?
+    private(set) var offset: Double = 0
+    mutating func resume(at date: Date, recordedSeconds: Double) {
+        offset = recordedSeconds.isFinite ? max(0, recordedSeconds) : 0
+        anchor = date
+    }
+    mutating func pause(recordedSeconds: Double) {
+        offset = recordedSeconds.isFinite ? max(offset, recordedSeconds) : offset
+        anchor = nil
+    }
+    func seconds(at date: Date) -> Double? {
+        guard let anchor, date >= anchor else { return nil }
+        return offset + date.timeIntervalSince(anchor)
+    }
+}
+
 // The capture session is shared only to attach AVFoundation's preview layer on
 // the main actor. All session configuration and start/stop operations belong to
 // CameraEngine. No mutable application state is stored in this bridge.
@@ -40,16 +80,38 @@ private final class CameraPreviewSource: @unchecked Sendable {
     let session = AVCaptureSession()
 }
 
+struct CameraZoomConfiguration: Sendable {
+    var minimum: Double = 1
+    var maximum: Double = 1
+    var current: Double = 1
+    var presets: [Double] = [1]
+    static func clamp(_ value: Double, minimum: Double, maximum: Double) -> Double {
+        min(maximum, max(minimum, value.isFinite ? value : 1))
+    }
+    static func choices(minimum: Double, maximum: Double, native: [Double]) -> [Double] {
+        let values = ([minimum, 1, 2] + native).filter { $0 >= minimum && $0 <= maximum }.sorted()
+        return values.reduce(into: []) { result, value in
+            if result.last.map({ abs($0 - value) > 0.02 }) ?? true { result.append(value) }
+        }
+    }
+}
+
 private enum CameraEvent: Sendable {
     case started(Date)
+    case paused(Double)
+    case resumed(Date, Double)
     case finished(success: Bool, message: String?)
 }
 
 // Blocking AVFoundation capture operations run on this actor, never the UI actor.
-private actor CameraEngine: NSObject, AVCaptureFileOutputRecordingDelegate {
+private actor CameraEngine: NSObject, AVCaptureFileOutputRecordingDelegate, AVCapturePhotoCaptureDelegate {
     private let preview: CameraPreviewSource
     private let output = AVCaptureMovieFileOutput()
+    private let photoOutput = AVCapturePhotoOutput()
+    private var photoContinuation: CheckedContinuation<Data, Error>?
     private let event: @Sendable (CameraEvent) -> Void
+    private var device: AVCaptureDevice?
+    private var zoomMultiplier: Double = 1
     private var configured = false
     private var stopRequested = false
 
@@ -61,7 +123,8 @@ private actor CameraEngine: NSObject, AVCaptureFileOutputRecordingDelegate {
     func prepare() throws {
         let session = preview.session
         if !configured {
-            guard let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else {
+            let types: [AVCaptureDevice.DeviceType] = [.builtInTripleCamera, .builtInDualWideCamera, .builtInDualCamera, .builtInWideAngleCamera]
+            guard let camera = types.compactMap({ AVCaptureDevice.default($0, for: .video, position: .back) }).first else {
                 throw NSError(domain: "PropertyLens.Camera", code: 1,
                     userInfo: [NSLocalizedDescriptionKey: "Camera unavailable. Recording requires a physical iPhone."])
             }
@@ -80,12 +143,96 @@ private actor CameraEngine: NSObject, AVCaptureFileOutputRecordingDelegate {
                     userInfo: [NSLocalizedDescriptionKey: "Unable to configure video recording."])
             }
             session.addOutput(output)
+            if session.canAddOutput(photoOutput) { session.addOutput(photoOutput) }
             if let connection = output.connection(with: .video), connection.isVideoRotationAngleSupported(90) {
                 connection.videoRotationAngle = 90
+            }
+            device = camera
+            if #available(iOS 18.0, *) {
+                zoomMultiplier = Double(camera.displayVideoZoomFactorMultiplier)
+            } else if let wideIndex = camera.constituentDevices.firstIndex(where: { $0.deviceType == .builtInWideAngleCamera }), wideIndex > 0 {
+                zoomMultiplier = 1 / camera.virtualDeviceSwitchOverVideoZoomFactors[wideIndex - 1].doubleValue
             }
             configured = true
         }
         if !session.isRunning { session.startRunning() }
+    }
+
+    func zoomConfiguration() -> CameraZoomConfiguration {
+        guard let device else { return CameraZoomConfiguration() }
+        let minimum = Double(device.minAvailableVideoZoomFactor) * zoomMultiplier
+        let native = device.virtualDeviceSwitchOverVideoZoomFactors.map { $0.doubleValue * zoomMultiplier }
+        let maximum = min(Double(device.maxAvailableVideoZoomFactor) * zoomMultiplier, max(10, native.max() ?? 1))
+        return CameraZoomConfiguration(minimum: minimum, maximum: maximum,
+            current: Double(device.videoZoomFactor) * zoomMultiplier,
+            presets: CameraZoomConfiguration.choices(minimum: minimum, maximum: maximum, native: native))
+    }
+
+    func setZoom(_ displayValue: Double) throws -> Double {
+        guard let device else { return 1 }
+        let limits = zoomConfiguration()
+        let display = CameraZoomConfiguration.clamp(displayValue, minimum: limits.minimum, maximum: limits.maximum)
+        let raw = CGFloat(display / zoomMultiplier)
+        try device.lockForConfiguration()
+        defer { device.unlockForConfiguration() }
+        device.cancelVideoZoomRamp()
+        device.videoZoomFactor = min(device.maxAvailableVideoZoomFactor, max(device.minAvailableVideoZoomFactor, raw))
+        return Double(device.videoZoomFactor) * zoomMultiplier
+    }
+
+    private var paused: Bool {
+        if #available(iOS 18.0, *) { return output.isRecordingPaused }
+        return false
+    }
+
+    @available(iOS 18.0, *)
+    func togglePause() {
+        if output.isRecordingPaused { output.resumeRecording() }
+        else if output.isRecording { output.pauseRecording() }
+    }
+
+    @available(iOS 18.0, *)
+    nonisolated func fileOutput(_ output: AVCaptureFileOutput, didPauseRecordingTo fileURL: URL, from connections: [AVCaptureConnection]) {
+        let duration = output.recordedDuration.seconds
+        Task { await reportPause(duration) }
+    }
+
+    private func reportPause(_ duration: Double) { event(.paused(duration)) }
+
+    @available(iOS 18.0, *)
+    nonisolated func fileOutput(_ output: AVCaptureFileOutput, didResumeRecordingTo fileURL: URL, from connections: [AVCaptureConnection]) {
+        let date = Date()
+        let duration = output.recordedDuration.seconds
+        Task { await reportResume(date, duration) }
+    }
+
+    private func reportResume(_ date: Date, _ duration: Double) { event(.resumed(date, duration)) }
+
+    func capturePhoto() async throws -> Data {
+        guard photoContinuation == nil, (!output.isRecording || paused),
+              photoOutput.connection(with: .video) != nil else { throw RoomPhotoError.missingPhoto }
+        if let connection = photoOutput.connection(with: .video), connection.isVideoRotationAngleSupported(90) {
+            connection.videoRotationAngle = 90
+        }
+        return try await withCheckedThrowingContinuation { continuation in
+            photoContinuation = continuation
+            photoOutput.capturePhoto(with: AVCapturePhotoSettings(), delegate: self)
+        }
+    }
+
+    nonisolated func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
+        let data = error == nil ? photo.fileDataRepresentation() : nil
+        Task { await finishPhoto(data) }
+    }
+
+    nonisolated func photoOutput(_ output: AVCapturePhotoOutput, didFinishCaptureFor resolvedSettings: AVCaptureResolvedPhotoSettings, error: Error?) {
+        if error != nil { Task { await finishPhoto(nil) } }
+    }
+
+    private func finishPhoto(_ data: Data?) {
+        if let data { photoContinuation?.resume(returning: data) }
+        else { photoContinuation?.resume(throwing: RoomPhotoError.missingPhoto) }
+        photoContinuation = nil
     }
 
     func start(to url: URL) {
@@ -95,7 +242,7 @@ private actor CameraEngine: NSObject, AVCaptureFileOutputRecordingDelegate {
 
     func stop() {
         stopRequested = true
-        if output.isRecording { output.stopRecording() }
+        if output.isRecording || paused { output.stopRecording() }
     }
 
     func shutdown() {
@@ -133,6 +280,16 @@ private struct CompassReading: Sendable {
 }
 
 @MainActor
+private final class LiveCompass: ObservableObject {
+    @Published var bearing: Double?
+}
+
+private struct LiveCompassView: View {
+    @ObservedObject var compass: LiveCompass
+    var body: some View { CompassDial(bearing: compass.bearing) }
+}
+
+@MainActor
 final class WalkthroughRecorder: NSObject, ObservableObject, CLLocationManagerDelegate {
     private let preview = CameraPreviewSource()
     var session: AVCaptureSession { preview.session }
@@ -140,18 +297,90 @@ final class WalkthroughRecorder: NSObject, ObservableObject, CLLocationManagerDe
         Task { @MainActor in self?.handle(event) }
     }
     private let location = CLLocationManager()
-    private var started: Date?
+    private var timeline = RecordingTimeline()
     private var pending: Walkthrough?
     private var preparing = false
     private var wantsCamera = false
     private var stopRequested = false
     @Published var ready = false
     @Published var recording = false
+    @Published var paused = false
+    @Published var visit: CaptureVisit?
     @Published var busy = false
-    @Published fileprivate var heading: CompassReading?
+    private var heading: CompassReading?
+    fileprivate let liveCompass = LiveCompass()
+
+    private func updateHeading(_ reading: CompassReading?) {
+        heading = reading
+        liveCompass.bearing = reading?.magneticHeading
+    }
     @Published var message = "Preparing camera…"
     @Published var error: String?
     @Published var refresh = UUID()
+    @Published var photoSaved = false
+    @Published var zoom = CameraZoomConfiguration()
+    @Published var zoomValue: Double = 1
+    private var zoomTask: Task<Void, Never>?
+    private var zoomInitialised = false
+
+    func changeZoom(_ value: Double) {
+        guard ready, !busy else { return }
+        let requested = CameraZoomConfiguration.clamp(value, minimum: zoom.minimum, maximum: zoom.maximum)
+        zoomValue = requested
+        zoomTask?.cancel()
+        zoomTask = Task {
+            do {
+                try await Task.sleep(for: .milliseconds(35))
+                try Task.checkCancellation()
+                let actual = try await camera.setZoom(requested)
+                if zoomValue == requested { zoomValue = actual }
+            } catch is CancellationError {} catch { self.error = error.localizedDescription }
+        }
+    }
+
+    @discardableResult
+    private func ensureVisit(propertyID: String?) throws -> CaptureVisit {
+        if let visit { return visit }
+        let value = CaptureVisit(id: UUID(), propertyID: propertyID, created: Date())
+        try value.save()
+        visit = value
+        return value
+    }
+
+    func endVisit() {
+        guard !recording, !busy, var value = visit else { return }
+        value.ended = Date()
+        do { try value.save(); visit = nil; refresh = UUID() }
+        catch { self.error = error.localizedDescription }
+    }
+
+    @available(iOS 18.0, *)
+    func togglePause() {
+        guard recording, !busy else { return }
+        busy = true
+        Task { await camera.togglePause() }
+    }
+
+    func takePhoto(propertyID: String?) async {
+        guard ready, (!recording || paused), !busy else { return }
+        busy = true
+        defer { busy = false; if !wantsCamera { endVisit() } }
+        do {
+            let captureVisit = try ensureVisit(propertyID: propertyID)
+            let bearing = heading?.magneticHeading
+            let data = try await camera.capturePhoto()
+            let jpeg = try await Task.detached(priority: .userInitiated) {
+                guard let image = UIImage(data: data) else { throw RoomPhotoError.missingPhoto }
+                return try RoomPhotoCapture.compassJPEG(image, bearing: bearing)
+            }.value
+            let card = RoomPhotoCard(id: UUID(), clipID: "", propertyID: propertyID, sourceSeconds: 0,
+                created: Date(), updated: Date(), roomType: "Uncategorised", name: "Photo " + UUID().uuidString.prefix(6),
+                lengthMetres: nil, widthMetres: nil, heightMetres: nil, unit: .metres, notes: "", sessionID: captureVisit.id)
+            try await RoomPhotoStore.shared.save(card, jpeg: jpeg)
+            photoSaved = true
+        } catch { self.error = error.localizedDescription }
+    }
+
 
     override init() {
         super.init()
@@ -182,6 +411,13 @@ final class WalkthroughRecorder: NSObject, ObservableObject, CLLocationManagerDe
             do {
                 try await camera.prepare()
                 guard wantsCamera else { await camera.shutdown(); return }
+                if !zoomInitialised {
+                    _ = try await camera.setZoom(1)
+                    zoomInitialised = true
+                }
+                zoom = await camera.zoomConfiguration()
+                zoomValue = zoom.current
+                guard wantsCamera else { await camera.shutdown(); return }
                 ready = true
             } catch {
                 ready = false
@@ -194,7 +430,8 @@ final class WalkthroughRecorder: NSObject, ObservableObject, CLLocationManagerDe
         guard ready, !busy, !recording else { return }
         do {
             try FileManager.default.createDirectory(at: Walkthrough.directory, withIntermediateDirectories: true)
-            let item = Walkthrough(id: UUID().uuidString, created: Date(), propertyID: propertyID, headings: [])
+            let captureVisit = try ensureVisit(propertyID: propertyID)
+            let item = Walkthrough(id: UUID().uuidString, created: Date(), propertyID: propertyID, headings: [], sessionID: captureVisit.id)
             pending = item
             stopRequested = false
             busy = true
@@ -210,7 +447,9 @@ final class WalkthroughRecorder: NSObject, ObservableObject, CLLocationManagerDe
     }
 
     func shutdown() {
+        endVisit()
         wantsCamera = false
+        zoomTask?.cancel()
         stop()
         ready = false
         location.stopUpdatingHeading()
@@ -220,13 +459,28 @@ final class WalkthroughRecorder: NSObject, ObservableObject, CLLocationManagerDe
     private func handle(_ event: CameraEvent) {
         switch event {
         case .started(let date):
-            started = date
+            timeline.resume(at: date, recordedSeconds: 0)
+            paused = false
             recording = true
             busy = false
             if stopRequested || !wantsCamera || UIApplication.shared.applicationState != .active { stop() }
-            if let heading { append(heading) }
+            appendCurrentHeading(at: 0)
+        case .paused(let duration):
+            guard recording else { return }
+            timeline.pause(recordedSeconds: duration)
+            pending?.headings.removeAll { $0.seconds > timeline.offset }
+            paused = true; busy = stopRequested
+        case .resumed(let date, let duration):
+            guard recording else { return }
+            timeline.resume(at: date, recordedSeconds: duration)
+            paused = false; busy = false
+            appendCurrentHeading(at: timeline.offset)
+            if stopRequested || !wantsCamera || UIApplication.shared.applicationState != .active { stop() }
         case .finished(let success, let failure):
-            defer { recording = false; busy = false; started = nil; pending = nil }
+            defer {
+                recording = false; paused = false; busy = false; timeline = RecordingTimeline(); pending = nil
+                if !wantsCamera { endVisit() }
+            }
             guard success, let item = pending else {
                 error = failure ?? "Recording could not be saved."
                 return
@@ -242,21 +496,27 @@ final class WalkthroughRecorder: NSObject, ObservableObject, CLLocationManagerDe
         let reading = CompassReading(magneticHeading: newHeading.magneticHeading,
             headingAccuracy: newHeading.headingAccuracy, timestamp: newHeading.timestamp)
         Task { @MainActor in
-            guard reading.headingAccuracy >= 0 else { self.heading = nil; return }
-            self.heading = reading
+            guard reading.headingAccuracy >= 0 else { self.updateHeading(nil); return }
+            self.updateHeading(reading)
             self.append(reading)
         }
     }
 
     private func append(_ value: CompassReading) {
-        guard let started, recording else { return }
-        pending?.headings.append(HeadingSample(seconds: max(0, value.timestamp.timeIntervalSince(started)),
+        guard recording, !paused, let seconds = timeline.seconds(at: value.timestamp),
+              seconds >= (pending?.headings.last?.seconds ?? 0) else { return }
+        pending?.headings.append(HeadingSample(seconds: seconds,
             degrees: value.magneticHeading, accuracy: value.headingAccuracy))
+    }
+
+    private func appendCurrentHeading(at seconds: Double) {
+        guard let heading else { return }
+        pending?.headings.append(HeadingSample(seconds: seconds, degrees: heading.magneticHeading, accuracy: heading.headingAccuracy))
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         let message = error.localizedDescription
-        Task { @MainActor in self.heading = nil; self.message = "Compass unavailable: \(message)" }
+        Task { @MainActor in self.updateHeading(nil); self.message = "Compass unavailable: \(message)" }
     }
 }
 
@@ -269,7 +529,7 @@ private struct CameraPreview: UIViewRepresentable {
         let view = Preview()
         let layer = view.layer as! AVCaptureVideoPreviewLayer
         layer.session = session
-        layer.videoGravity = .resizeAspect
+        layer.videoGravity = .resizeAspectFill
         if let connection = layer.connection, connection.isVideoRotationAngleSupported(90) { connection.videoRotationAngle = 90 }
         return view
     }
@@ -280,22 +540,22 @@ struct WalkthroughView: View {
     var propertyID: String? = nil
     @StateObject private var recorder = WalkthroughRecorder()
     @Environment(\.scenePhase) private var phase
-    @State private var clips: [Walkthrough] = []
     @State private var showingInfo = false
-    private func reload() { clips = Walkthrough.load(propertyID: propertyID) }
     var body: some View {
         ZStack(alignment: .topLeading) {
-            Color.black
+            Color.black.ignoresSafeArea()
             CameraPreview(session: recorder.session)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .ignoresSafeArea()
+
             HStack(alignment: .top) {
-                CompassDial(bearing: recorder.heading?.magneticHeading)
+                LiveCompassView(compass: recorder.liveCompass)
                 Spacer()
-                Label(recorder.recording ? "REC" : "Video only", systemImage: recorder.recording ? "record.circle.fill" : "speaker.slash")
+                Label(recorder.paused ? "PAUSED" : (recorder.recording ? "REC" : "Video only"), systemImage: recorder.paused ? "pause.circle.fill" : (recorder.recording ? "record.circle.fill" : "speaker.slash"))
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(recorder.recording ? .red : .white)
+                    .foregroundStyle(recorder.paused ? .yellow : (recorder.recording ? .red : .white))
                     .padding(10).background(.black.opacity(0.65), in: Capsule())
-                    .accessibilityLabel(recorder.recording ? "Recording video without audio" : "Video without audio")
+                    .accessibilityLabel(recorder.paused ? "Recording paused; you can take photos" : (recorder.recording ? "Recording video without audio" : "Video without audio"))
             }.padding(16)
             if !recorder.ready {
                 VStack(spacing: 14) {
@@ -309,57 +569,98 @@ struct WalkthroughView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            HStack {
-                NavigationLink {
-                    List {
-                        if clips.isEmpty {
-                            ContentUnavailableView("No walkthroughs yet", systemImage: "video", description: Text("Your saved recordings will be available here offline."))
-                        }
-                        ForEach(clips) { clip in
-                            NavigationLink { WalkthroughPlayback(clip: clip) } label: {
-                                Label(clip.created.formatted(date: .abbreviated, time: .shortened), systemImage: "play.rectangle")
-                            }
-                        }
-                    }.navigationTitle("Walkthroughs")
-                } label: {
-                    VStack(spacing: 5) {
-                        Image(systemName: "photo.stack").font(.title2)
-                        Text("Saved (\(clips.count))").font(.caption)
-                    }.frame(maxWidth: .infinity)
-                }.disabled(recorder.recording || recorder.busy)
-                Button {
-                    if recorder.recording { recorder.stop() } else { recorder.start(propertyID: propertyID) }
-                } label: {
-                    ZStack {
-                        Circle().strokeBorder(.white, lineWidth: 3).frame(width: 72, height: 72)
-                        if recorder.busy {
-                            ProgressView().tint(.white)
-                        } else {
-                            RoundedRectangle(cornerRadius: recorder.recording ? 7 : 32)
-                                .fill(.red)
-                                .frame(width: recorder.recording ? 30 : 58, height: recorder.recording ? 30 : 58)
-                        }
-                    }.frame(maxWidth: .infinity)
+        .overlay(alignment: .bottom) {
+            VStack(spacing: 12) {
+                HStack {
+                    Text(recorder.visit?.title ?? "A new visit starts with your first capture")
+                        .font(.caption).lineLimit(1)
+                    Spacer()
+                    if recorder.visit != nil {
+                        Button("End session") { recorder.endVisit() }
+                            .font(.caption.bold()).disabled(recorder.recording || recorder.busy)
+                    }
                 }
-                .accessibilityLabel(recorder.recording ? "Stop and save walkthrough" : "Start recording walkthrough")
-                .disabled(!recorder.ready || recorder.busy)
-                Button { showingInfo = true } label: {
-                    VStack(spacing: 5) {
-                        Image(systemName: "info.circle").font(.title2)
-                        Text("Info").font(.caption)
-                    }.frame(maxWidth: .infinity)
+                if recorder.ready && recorder.zoom.maximum > recorder.zoom.minimum {
+                    HStack(spacing: 12) {
+                        ForEach(recorder.zoom.presets, id: \.self) { value in
+                            let selected = abs(recorder.zoomValue - value) < 0.05
+                            Button { recorder.changeZoom(value) } label: {
+                                Text(value.formatted(.number.precision(.fractionLength(0...1))) + "×")
+                                    .font(.subheadline.weight(.semibold))
+                                    .frame(minWidth: 44, minHeight: 44)
+                                    .background(selected ? Color.yellow.opacity(0.35) : Color.white.opacity(0.12), in: Capsule())
+                            }
+                            .accessibilityLabel("Zoom \(value.formatted()) times")
+                            .accessibilityAddTraits(selected ? .isSelected : [])
+                        }
+                    }.disabled(recorder.busy)
+                }
+                HStack {
+                    NavigationLink {
+                        PropertyMediaLibrary(propertyID: propertyID)
+                    } label: {
+                        VStack(spacing: 5) {
+                            Image(systemName: "photo.stack").font(.title2)
+                            Text("Library").font(.caption)
+                        }.frame(maxWidth: .infinity)
+                    }.disabled(recorder.recording || recorder.busy)
+                    Button {
+                        if recorder.recording { recorder.stop() } else { recorder.start(propertyID: propertyID) }
+                    } label: {
+                        ZStack {
+                            Circle().strokeBorder(.white, lineWidth: 3).frame(width: 72, height: 72)
+                            if recorder.busy {
+                                ProgressView().tint(.white)
+                            } else {
+                                RoundedRectangle(cornerRadius: recorder.recording ? 7 : 32)
+                                    .fill(.red)
+                                    .frame(width: recorder.recording ? 30 : 58, height: recorder.recording ? 30 : 58)
+                            }
+                        }.frame(maxWidth: .infinity)
+                    }
+                    .accessibilityLabel(recorder.recording ? "Stop and save walkthrough" : "Start recording walkthrough")
+                    .disabled(!recorder.ready || recorder.busy)
+                    if #available(iOS 18.0, *), recorder.recording {
+                        Button { recorder.togglePause() } label: {
+                            VStack(spacing: 5) {
+                                Image(systemName: recorder.paused ? "play.fill" : "pause.fill").font(.title2)
+                                Text(recorder.paused ? "Resume" : "Pause").font(.caption)
+                            }.frame(maxWidth: .infinity)
+                        }.disabled(recorder.busy)
+                    }
+                    Button { Task { await recorder.takePhoto(propertyID: propertyID) } } label: {
+                        VStack(spacing: 5) {
+                            Image(systemName: "camera.fill").font(.title2)
+                            Text("Photo").font(.caption)
+                        }.frame(maxWidth: .infinity)
+                    }.disabled(!recorder.ready || (recorder.recording && !recorder.paused) || recorder.busy)
+                    Button { showingInfo = true } label: {
+                        VStack(spacing: 5) {
+                            Image(systemName: "info.circle").font(.title2)
+                            Text("Info").font(.caption)
+                        }.frame(maxWidth: .infinity)
+                    }
                 }
             }
-            .foregroundStyle(.white).padding(.horizontal, 18).padding(.vertical, 14)
-            .background(Color(white: 0.07))
+            .foregroundStyle(.white)
+            .padding(12)
+            .background(.black.opacity(0.65), in: RoundedRectangle(cornerRadius: 22))
+            .padding(.horizontal, 12)
+            .padding(.bottom, 8)
         }
+        .alert("Photo saved", isPresented: $recorder.photoSaved) {
+            Button("OK", role: .cancel) {}
+        } message: { Text("Saved in this visit under Photos & videos → Sessions. Add room details whenever you are ready.") }
         .sheet(isPresented: $showingInfo) {
             NavigationStack {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
                         Label("Video only · Saved offline", systemImage: "video").font(.headline)
                         Text("Only the rear camera is recorded. Audio and app controls are excluded.")
+                        Label("Camera zoom", systemImage: "plus.magnifyingglass").font(.headline)
+                        Text("Tap a zoom button. Available wide and telephoto views depend on this iPhone. iOS chooses the camera lens automatically; some zoom levels use digital cropping. Zoom affects saved photos and videos, including while recording.")
+                        Label("Pause and photos", systemImage: "pause.circle").font(.headline)
+                        Text("On iOS 18 or later, tap Pause, take one or more photos, then Resume. Stop saves one video with paused time left out. All captures belong to the current visit; End session starts a fresh visit for your next capture.")
                         Label("Reading the compass", systemImage: "safari").font(.headline)
                         Text("The red needle and N point toward magnetic north. The gold marker at the top shows your phone direction; degrees appear below. Hold your phone upright and away from magnets.")
                         Text(recorder.message).foregroundStyle(.secondary)
@@ -372,9 +673,11 @@ struct WalkthroughView: View {
             }.presentationDetents([.medium, .large])
         }
         .navigationTitle("Record walkthrough").navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .tint(.white)
         .navigationBarBackButtonHidden(recorder.recording || recorder.busy)
-        .task { recorder.prepare(); reload() }
-        .onChange(of: recorder.refresh) { reload() }
+        .task { recorder.prepare() }
         .onChange(of: phase) { if phase != .active { recorder.stop() } else { recorder.prepare() } }
         .onReceive(NotificationCenter.default.publisher(for: AVCaptureSession.wasInterruptedNotification, object: recorder.session)) { _ in recorder.stop() }
         .onDisappear { recorder.shutdown() }
@@ -384,19 +687,41 @@ struct WalkthroughView: View {
     }
 }
 
-private struct WalkthroughPlayback: View {
+struct WalkthroughPlayback: View {
     let clip: Walkthrough
-    @State private var player: AVPlayer
+    @State private var player: AVPlayer?
     @State private var exporting = false
     @State private var exportedURL: URL?
     @State private var sharePresented = false
     @State private var exportError: String?
-    init(clip: Walkthrough) { self.clip = clip; _player = State(initialValue: AVPlayer(url: clip.movie)) }
+    @State private var capturedRoom: CapturedRoomPhoto?
+    @State private var capturingRoom = false
+    @State private var roomCaptureTask: Task<Void, Never>?
     var body: some View {
         VStack(spacing: 20) {
             VideoPlayer(player: player)
+            HStack {
+                Button {
+                    guard let player else { return }
+                    player.pause()
+                    let seconds = player.currentTime().seconds
+                    capturingRoom = true
+                    roomCaptureTask = Task { @MainActor in
+                        defer { capturingRoom = false }
+                        do { capturedRoom = try await RoomPhotoCapture.capture(clip, seconds: seconds) }
+                        catch is CancellationError { }
+                        catch { exportError = error.localizedDescription }
+                    }
+                } label: {
+                    Label(capturingRoom ? "Capturing…" : "Capture room photo", systemImage: "camera.viewfinder")
+                }.disabled(player == nil || capturingRoom || exporting)
+                Spacer()
+                NavigationLink { RoomPhotoLibrary(clipID: clip.id) } label: {
+                    Label("Room photos", systemImage: "photo.on.rectangle")
+                }
+            }.font(.subheadline)
             TimelineView(.periodic(from: .now, by: 0.25)) { _ in
-                let time = player.currentTime().seconds
+                let time = player?.currentTime().seconds ?? 0
                 let sample = clip.headings.last { $0.seconds <= time }
                 if let sample, time - sample.seconds < 5 {
                     CompassDial(bearing: sample.degrees)
@@ -406,7 +731,7 @@ private struct WalkthroughPlayback: View {
             }
             Button {
                 exporting = true
-                player.pause()
+                player?.pause()
                 Task { @MainActor in
                     do {
                         exportedURL = try await CompassVideoExporter.export(clip)
@@ -416,19 +741,23 @@ private struct WalkthroughPlayback: View {
                 }
             } label: {
                 Label(exporting ? "Preparing compass video…" : "Share video with compass", systemImage: "square.and.arrow.up")
-            }.disabled(exporting)
+            }.disabled(exporting || capturingRoom)
             if exporting { ProgressView() }
             Text("The shared video includes recorded magnetic bearings. Missing readings are labelled unavailable. Keep this screen open while preparing the video.")
                 .font(.footnote).foregroundStyle(.secondary)
         }.padding().navigationTitle("Walkthrough").navigationBarTitleDisplayMode(.inline)
-        .onDisappear { player.pause() }
+        .task {
+            if player == nil { player = AVPlayer(url: clip.movie) }
+        }
+        .onDisappear { player?.pause(); roomCaptureTask?.cancel() }
+        .sheet(item: $capturedRoom) { photo in RoomPhotoEditor(captured: photo) }
         .sheet(isPresented: $sharePresented, onDismiss: {
             if let exportedURL { try? FileManager.default.removeItem(at: exportedURL) }
             exportedURL = nil
         }) {
             if let exportedURL { WalkthroughShareSheet(url: exportedURL) }
         }
-        .alert("Unable to prepare video", isPresented: Binding(get: { exportError != nil }, set: { if !$0 { exportError = nil } })) {
+        .alert("Walkthrough", isPresented: Binding(get: { exportError != nil }, set: { if !$0 { exportError = nil } })) {
             Button("OK") { exportError = nil }
         } message: { Text(exportError ?? "") }
     }
@@ -488,7 +817,7 @@ private enum CompassVideoExporter {
 }
 
 // One renderer keeps the live dial, playback dial and exported video consistent.
-private enum CompassDialArtwork {
+enum CompassDialArtwork {
     static func image(bearing: Double?) -> UIImage {
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
@@ -609,5 +938,102 @@ private final class VideoExportOperation {
                 }
             }
         }
+    }
+}
+
+// Atomic sidecar writes update the parent directory. Reuse the decoded listing
+// across library and session screens until media is saved or removed.
+private actor MediaListing {
+    static let shared = MediaListing()
+    private var videoStamp: Date?
+    private var visitStamp: Date?
+    private var videos: [Walkthrough]?
+    private var visits: [CaptureVisit]?
+
+    func load(propertyID: String?, sessionID: UUID?) -> ([Walkthrough], Result<[CaptureVisit], Error>) {
+        let videoDate = modified(Walkthrough.directory)
+        if videos == nil || videoStamp != videoDate || videoDate == nil {
+            videos = Walkthrough.load(propertyID: nil)
+            videoStamp = videoDate
+        }
+        let filtered = (videos ?? []).filter {
+            (propertyID == nil || $0.propertyID == propertyID) && (sessionID == nil || $0.sessionID == sessionID)
+        }
+        guard sessionID == nil else { return (filtered, .success([])) }
+        let sessions = Result {
+            let visitDate = modified(CaptureVisit.directory)
+            if visits == nil || visitStamp != visitDate || visitDate == nil {
+                visits = try CaptureVisit.load(propertyID: nil)
+                visitStamp = visitDate
+            }
+            return (visits ?? []).filter { propertyID == nil || $0.propertyID == propertyID }
+        }
+        return (filtered, sessions)
+    }
+
+    private func modified(_ directory: URL) -> Date? {
+        try? directory.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
+    }
+}
+
+struct PropertyMediaLibrary: View {
+    var propertyID: String? = nil
+    var visit: CaptureVisit? = nil
+    @State private var clips: [Walkthrough] = []
+    @State private var visits: [CaptureVisit] = []
+    @State private var loadingMedia = true
+    @State private var error: String?
+    var body: some View {
+        LensMenuPage(title: visit?.title ?? "Photos & videos") {
+            LensMenuHeader(
+                title: visit == nil ? "Your media library" : "Visit library",
+                subtitle: visit?.title ?? "Browse walkthroughs, room photos and measurements.",
+                symbol: "photo.stack"
+            )
+
+            NavigationLink { RoomPhotoLibrary(sessionID: visit?.id, propertyID: propertyID) } label: {
+                LensMenuRow("Room photos & dimensions", "Browse photos and edit room details", "photo.on.rectangle")
+            }.buttonStyle(.plain)
+
+            if visit == nil {
+                NavigationLink { WalkthroughView(propertyID: propertyID) } label: {
+                    LensMenuRow("Take photos or record video", "Capture a walkthrough with compass readings", "video.circle")
+                }.buttonStyle(.plain)
+
+                Text("Sessions").font(.headline).foregroundStyle(Palette.ink).accessibilityAddTraits(.isHeader)
+                if !loadingMedia && visits.isEmpty {
+                    LensMenuRow("No sessions yet", "New captures will be grouped by visit.", "folder", showsArrow: false)
+                }
+                ForEach(visits) { session in
+                    NavigationLink { PropertyMediaLibrary(propertyID: session.propertyID, visit: session) } label: {
+                        LensMenuRow(session.title, "Photos and videos from this visit", "folder")
+                    }.buttonStyle(.plain)
+                }
+            }
+
+            Text(visit == nil ? "All saved videos" : "Session videos")
+                .font(.headline).foregroundStyle(Palette.ink).accessibilityAddTraits(.isHeader)
+            if loadingMedia {
+                ProgressView("Loading videos").frame(maxWidth: .infinity).padding(.vertical, 20)
+            } else if clips.isEmpty {
+                LensMenuRow("No videos saved yet", "Recorded walkthroughs will appear here.", "play.rectangle", showsArrow: false)
+            }
+            ForEach(clips) { clip in
+                NavigationLink { WalkthroughPlayback(clip: clip) } label: {
+                    LensMenuRow(clip.created.formatted(date: .abbreviated, time: .shortened), "Play walkthrough", "play.rectangle")
+                }.buttonStyle(.plain)
+            }
+        }
+        .task {
+            defer { loadingMedia = false }
+            let (videos, sessions) = await MediaListing.shared.load(propertyID: propertyID, sessionID: visit?.id)
+            guard !Task.isCancelled else { return }
+            clips = videos
+            do { visits = try sessions.get() }
+            catch { self.error = error.localizedDescription }
+        }
+        .alert("Media library", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: { Text(error ?? "") }
     }
 }

@@ -60,3 +60,37 @@ Simulator and unsigned device builds pass with complete Swift concurrency checki
 ## Settings
 
 Open the gear button on Home. Display offers System, Light and Dark; the selected appearance persists across launches. Account offers an editable device-local name, optional email and Buyer/Seller/Broker role, with a clear-profile action that preserves property records and walkthroughs. This is not online authentication: sign-in, account switching and cloud sync remain unimplemented.
+
+
+## Room photos and manual dimensions
+
+Open a saved walkthrough, pause at a useful frame and tap **Capture room photo**. Choose the room/area type and name, optionally enter length and width together, height and notes, then save. Dimensions use metres or decimal feet. Area assumes a rectangle. Room identity and measurements are supplied by the user.
+
+Cards are stored offline as JPEG and JSON under Documents/RoomPhotos, linked to the source video timestamp and property when available. Browse from Home, the property details, or the source walkthrough. Edit details later without changing the original video. This feature does not embed dimensions into shared videos or automatically identify rooms. Photos are extracted with the source video's orientation applied.
+
+Run `sh scripts/check-room-photos.sh` on a booted simulator to check persistence, edits, filtering, validation and deletion. Device acceptance: capture portrait video frames, save a card without dimensions, reopen the app, edit dimensions, switch units and confirm the photo and source link remain intact.
+
+
+### Direct photos and shared rooms
+
+The Photo button beside Record saves a still image immediately as an uncategorised card. Photo capture is enabled before recording and while recording is paused. Home → Photos & videos opens the library without starting the camera. Saved properties → property → Property photos & videos filters media for that property.
+
+Choose Use an existing room’s details when editing a photo. Category, name, dimensions, units and notes are shared by photos assigned to that room; images and source timestamps remain separate. Use Bedroom 1/Bedroom 2 for different rooms, or Separate this photo into a new room to detach one. Sharing is limited to a property; unassigned video captures share within their video and direct photos within the unassigned camera collection.
+
+Legacy photos migrate to an atomic rooms-v2.json index on first access, retaining JPEGs and original sidecars. Same-property/type/name photos initially share the latest edited details. Each save writes room changes in one atomic index replacement. Direct camera capture requires physical-iPhone verification.
+
+
+### Camera zoom
+
+Use the slider or tap a zoom shortcut before or during recording. The rear virtual triple/dual camera is preferred when available, falling back to the wide camera. Displayed factors use Apple's display multiplier (or the wide-lens switch-over factor on iOS 17). The initial view is 1×. Shortcuts reflect available camera switch-over factors plus a 2× zoom option when supported; intermediate factors may be digital crops. iOS chooses the physical lens based on its capture conditions. Maximum UI zoom is capped at 10× unless a native lens switch-over is higher, and always constrained to the current device limits. Photos use the same selected zoom.
+
+Run `sh scripts/check-camera-zoom.sh` with a booted simulator for bounds and preset checks. Physical-device acceptance: verify the initial 1× field of view; test available wide/telephoto shortcuts and slider; record continuously while changing zoom; replay and export the video with compass; take a zoomed photo. Hardware switching and image quality cannot be verified with the simulator.
+
+
+### Visit sessions and video pause
+
+The first photo or video starts a visit session automatically. Further captures use that session until End session or leaving the recorder. Home → Photos & videos → Sessions opens a visit with its photo collection and videos. Sessions also appear in the property's media library. Older media remain available in the all-media lists; no previous visit membership is invented.
+
+On iOS 18 and later, Pause freezes writing to the current video, enables Photo, and Resume continues in the same video file. Stop also works while paused. Camera preview stays live. Compass timestamps are anchored to recorded movie duration on resume; paused wall time is excluded. iOS 17 still supports ordinary record/stop and photos between videos; the native Pause button requires iOS 18. Background/interruption stops and saves the current recording, including when paused. Pinch zoom has been removed; slider and zoom shortcuts remain.
+
+Run `sh scripts/check-capture-sessions.sh` for repeated-pause timeline, session persistence/filtering/end and legacy-video compatibility checks, plus `sh scripts/check-room-photos.sh` for photo session filtering and edit retention. On a physical iPhone: record → Pause → take multiple photos → Resume → Stop, then verify one playable video with no paused gap, aligned compass after each resume, and all captures in one session. End session and confirm the next capture is in a separate visit. Stop while paused and repeat the background/interruption checks.
