@@ -2,6 +2,7 @@ import SwiftUI
 import UIKit
 
 struct Property: Identifiable, Codable, Hashable, Sendable {
+    // Legacy storage keys preserve existing records across the display-name change.
     static let storageKey = "propertylens.properties.v1"
 
     var id = UUID()
@@ -70,8 +71,10 @@ struct ContentView: View {
                                 .scaledToFit()
                                 .frame(width: 36, height: 36)
                                 .clipShape(RoundedRectangle(cornerRadius: 8))
-                            Text("PropertyLens")
+                            Text("MyPropertyVisit")
                                 .font(.title2.bold())
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
                                 .foregroundStyle(Palette.ink)
                         }
                         Spacer()
@@ -369,7 +372,7 @@ private struct LensSettingsView: View {
     @AppStorage("propertylens.theme.v1") private var theme = "system"
     var body: some View {
         LensMenuPage(title: "Settings") {
-            LensMenuHeader(title: "Make it yours", subtitle: "Manage your local profile and choose how PropertyLens looks.", symbol: "gearshape")
+            LensMenuHeader(title: "Make it yours", subtitle: "Manage your local profile and choose how MyPropertyVisit looks.", symbol: "gearshape")
 
             Text("Profile").font(.headline).foregroundStyle(Palette.ink).accessibilityAddTraits(.isHeader)
             NavigationLink { LocalProfileView() } label: {

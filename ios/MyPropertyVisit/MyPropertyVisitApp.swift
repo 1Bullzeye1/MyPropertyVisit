@@ -2,7 +2,7 @@ import SwiftUI
 import OSLog
 
 @main
-struct PropertyLens: App {
+struct MyPropertyVisit: App {
     private static let startupLogger = Logger(subsystem: "com.infinity-propview.app", category: "Startup")
     private let startupTime = ContinuousClock.now
     @State private var initialProperties: [Property]?
@@ -99,7 +99,7 @@ private struct StartupArtwork: View {
                             .scaledToFit()
                             .frame(width: 72, height: 72)
                             .background(.indigo, in: RoundedRectangle(cornerRadius: 16))
-                        Text("PropertyLens").font(.title.bold())
+                        Text("MyPropertyVisit").font(.title.bold())
                     }
                 }
             }
@@ -112,7 +112,7 @@ private struct StartupArtwork: View {
                 .frame(width: 132)
                 .position(x: geometry.size.width / 2, y: geometry.size.height * 0.68)
                 .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: progress)
-                .accessibilityLabel("Loading PropertyLens")
+                .accessibilityLabel("Loading MyPropertyVisit")
         }
         .ignoresSafeArea()
     }

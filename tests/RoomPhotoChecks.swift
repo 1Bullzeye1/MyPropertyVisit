@@ -69,6 +69,12 @@ Task { @MainActor in
             widthMetres: nil, heightMetres: nil, unit: .feet, notes: "Measured manually")
         card.sessionID = UUID()
         try await store.save(card, jpeg: jpeg)
+        let copy = try await store.exportCopy(card.id)
+        let copiedBytes = try Data(contentsOf: copy)
+        precondition(copiedBytes == jpeg, "Photo sharing changed the original JPEG bytes")
+        try FileManager.default.removeItem(at: copy)
+        let originalBytes = try await store.image(card.id)
+        precondition(originalBytes == jpeg, "Export cleanup removed the original photo")
         let thumbnail = try await store.thumbnail(card.id)
         precondition(thumbnail.height == 1024 && thumbnail.width < thumbnail.height,
                      "Gallery thumbnail exceeded its size limit or lost its portrait aspect")

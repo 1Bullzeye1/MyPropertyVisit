@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "00000000000000000000000A"
-               BuildableName = "PropertyLens.app"
-               BlueprintName = "PropertyLens"
-               ReferencedContainer = "container:PropertyLens.xcodeproj">
+               BuildableName = "MyPropertyVisit.app"
+               BlueprintName = "MyPropertyVisit"
+               ReferencedContainer = "container:MyPropertyVisit.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -44,9 +44,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "00000000000000000000000A"
-            BuildableName = "PropertyLens.app"
-            BlueprintName = "PropertyLens"
-            ReferencedContainer = "container:PropertyLens.xcodeproj">
+            BuildableName = "MyPropertyVisit.app"
+            BlueprintName = "MyPropertyVisit"
+            ReferencedContainer = "container:MyPropertyVisit.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -61,9 +61,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "00000000000000000000000A"
-            BuildableName = "PropertyLens.app"
-            BlueprintName = "PropertyLens"
-            ReferencedContainer = "container:PropertyLens.xcodeproj">
+            BuildableName = "MyPropertyVisit.app"
+            BlueprintName = "MyPropertyVisit"
+            ReferencedContainer = "container:MyPropertyVisit.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

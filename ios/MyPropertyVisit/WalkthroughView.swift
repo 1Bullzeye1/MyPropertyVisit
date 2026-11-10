@@ -1,4 +1,5 @@
 import SwiftUI
+import Photos
 import AVFoundation
 import AVKit
 import CoreLocation
@@ -125,7 +126,7 @@ private actor CameraEngine: NSObject, AVCaptureFileOutputRecordingDelegate, AVCa
         if !configured {
             let types: [AVCaptureDevice.DeviceType] = [.builtInTripleCamera, .builtInDualWideCamera, .builtInDualCamera, .builtInWideAngleCamera]
             guard let camera = types.compactMap({ AVCaptureDevice.default($0, for: .video, position: .back) }).first else {
-                throw NSError(domain: "PropertyLens.Camera", code: 1,
+                throw NSError(domain: "MyPropertyVisit.Camera", code: 1,
                     userInfo: [NSLocalizedDescriptionKey: "Camera unavailable. Recording requires a physical iPhone."])
             }
             let input = try AVCaptureDeviceInput(device: camera)
@@ -133,13 +134,13 @@ private actor CameraEngine: NSObject, AVCaptureFileOutputRecordingDelegate, AVCa
             defer { session.commitConfiguration() }
             session.sessionPreset = .high
             guard session.canAddInput(input) else {
-                throw NSError(domain: "PropertyLens.Camera", code: 2,
+                throw NSError(domain: "MyPropertyVisit.Camera", code: 2,
                     userInfo: [NSLocalizedDescriptionKey: "Unable to configure the camera input."])
             }
             session.addInput(input)
             guard session.canAddOutput(output) else {
                 session.removeInput(input)
-                throw NSError(domain: "PropertyLens.Camera", code: 3,
+                throw NSError(domain: "MyPropertyVisit.Camera", code: 3,
                     userInfo: [NSLocalizedDescriptionKey: "Unable to configure video recording."])
             }
             session.addOutput(output)
@@ -665,7 +666,7 @@ struct WalkthroughView: View {
                         Text("The red needle and N point toward magnetic north. The gold marker at the top shows your phone direction; degrees appear below. Hold your phone upright and away from magnets.")
                         Text(recorder.message).foregroundStyle(.secondary)
                         Label("Sharing", systemImage: "square.and.arrow.up").font(.headline)
-                        Text("Open a saved walkthrough and choose Share video with compass to embed the compass in the shared video.")
+                        Text("Use Share or save media in Photos & videos to share selected photos and compass videos, or save them to Photos. You can also export a single photo or video.")
                     }.padding(24)
                 }
                 .navigationTitle("Recording guide").navigationBarTitleDisplayMode(.inline)
@@ -742,6 +743,7 @@ struct WalkthroughPlayback: View {
             } label: {
                 Label(exporting ? "Preparing compass video…" : "Share video with compass", systemImage: "square.and.arrow.up")
             }.disabled(exporting || capturingRoom)
+            NavigationLink("Save video to Photos") { MediaExportView(clips: [clip], photos: []) }
             if exporting { ProgressView() }
             Text("The shared video includes recorded magnetic bearings. Missing readings are labelled unavailable. Keep this screen open while preparing the video.")
                 .font(.footnote).foregroundStyle(.secondary)
@@ -771,7 +773,7 @@ private struct WalkthroughShareSheet: UIViewControllerRepresentable {
     func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }
 
-private enum CompassVideoExporter {
+enum CompassVideoExporter {
     @MainActor static func export(_ clip: Walkthrough) async throws -> URL {
         let asset = AVURLAsset(url: clip.movie)
         // AVFoundation supplies oriented frames, preserving the source movie's rotation.
@@ -787,7 +789,7 @@ private enum CompassVideoExporter {
             else {
                 let image = CompassDialArtwork.image(bearing: bearing.map { Double(Int($0)) })
                 guard let rendered = CIImage(image: image) else {
-                    request.finish(with: NSError(domain: "PropertyLens.Export", code: 2,
+                    request.finish(with: NSError(domain: "MyPropertyVisit.Export", code: 2,
                         userInfo: [NSLocalizedDescriptionKey: "Could not render the compass overlay."]))
                     return
                 }
@@ -803,11 +805,11 @@ private enum CompassVideoExporter {
             request.finish(with: overlay.composited(over: frame).cropped(to: frame.extent), context: nil)
         }
         guard let exporter = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetHighestQuality) else {
-            throw NSError(domain: "PropertyLens.Export", code: 1,
+            throw NSError(domain: "MyPropertyVisit.Export", code: 1,
                 userInfo: [NSLocalizedDescriptionKey: "Video export is not available for this recording."])
         }
         let type: AVFileType = exporter.supportedFileTypes.contains(.mp4) ? .mp4 : .mov
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("PropertyLens-\(UUID().uuidString).\(type == .mp4 ? "mp4" : "mov")")
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("MyPropertyVisit-\(UUID().uuidString).\(type == .mp4 ? "mp4" : "mov")")
         exporter.outputURL = url
         exporter.outputFileType = type
         exporter.videoComposition = composition
@@ -932,7 +934,7 @@ private final class VideoExportOperation {
                     if exporter.status == .completed { continuation.resume(returning: url) }
                     else {
                         try? FileManager.default.removeItem(at: url)
-                        continuation.resume(throwing: exporter.error ?? NSError(domain: "PropertyLens.Export", code: 3,
+                        continuation.resume(throwing: exporter.error ?? NSError(domain: "MyPropertyVisit.Export", code: 3,
                             userInfo: [NSLocalizedDescriptionKey: "Video export was interrupted. Please try again."]))
                     }
                 }
@@ -1011,6 +1013,10 @@ struct PropertyMediaLibrary: View {
                 }
             }
 
+            NavigationLink { MediaExportLoader(propertyID: propertyID, sessionID: visit?.id) } label: {
+                LensMenuRow("Share or save media", "Select photos and videos, or save all to Photos", "square.and.arrow.up")
+            }.buttonStyle(.plain)
+
             Text(visit == nil ? "All saved videos" : "Session videos")
                 .font(.headline).foregroundStyle(Palette.ink).accessibilityAddTraits(.isHeader)
             if loadingMedia {
@@ -1036,4 +1042,150 @@ struct PropertyMediaLibrary: View {
             Button("OK", role: .cancel) {}
         } message: { Text(error ?? "") }
     }
+}
+
+
+struct MediaExportLoader: View {
+    var propertyID: String? = nil
+    var sessionID: UUID? = nil
+    @State private var clips: [Walkthrough] = []
+    @State private var photos: [RoomPhotoCard] = []
+    @State private var loaded = false
+    @State private var error: String?
+    var body: some View {
+        Group {
+            if loaded { MediaExportView(clips: clips, photos: photos) }
+            else if let error { Text(error).padding() }
+            else { ProgressView("Loading media") }
+        }.task {
+            do {
+                let (videos, _) = await MediaListing.shared.load(propertyID: propertyID, sessionID: sessionID)
+                photos = try await RoomPhotoStore.shared.all(propertyID: propertyID, sessionID: sessionID)
+                clips = videos
+                loaded = true
+            } catch { self.error = error.localizedDescription }
+        }
+    }
+}
+
+struct MediaExportView: View {
+    let clips: [Walkthrough]
+    let photos: [RoomPhotoCard]
+    @State private var selected: Set<String> = []
+    @State private var initialized = false
+    @State private var busy = false
+    @State private var progress = ""
+    @State private var message: String?
+    @State private var urls: [URL] = []
+    @State private var temporary: [URL] = []
+    @State private var sharing = false
+    @State private var shareReport: String?
+    private var keys: [String] { photos.map { $0.id.uuidString } + clips.map { $0.id } }
+    var body: some View {
+        List {
+            Section {
+                Button(selected.count == keys.count ? "Deselect all" : "Select all") {
+                    selected = selected.count == keys.count ? [] : Set(keys)
+                }
+                ForEach(photos) { photo in
+                    selection(photo.id.uuidString, title: photo.name, symbol: "photo")
+                }
+                ForEach(clips) { clip in
+                    selection(clip.id, title: "Video · " + clip.created.formatted(date: .abbreviated, time: .shortened), symbol: "video")
+                }
+            } header: { Text("Choose media (\(selected.count) selected)") }
+            Section {
+                Button("Save selected to Photos", systemImage: "square.and.arrow.down") { run(save: true) }
+                    .disabled(selected.isEmpty)
+                Button("Share selected", systemImage: "square.and.arrow.up") { run(save: false) }
+                    .disabled(selected.isEmpty)
+                Text("The compass stays embedded. Room dimensions and notes remain editable in MyPropertyVisit.").font(.footnote)
+                if busy { ProgressView(); Text(progress).font(.footnote) }
+            }
+        }
+        .navigationTitle("Share & save")
+        .disabled(busy)
+        .navigationBarBackButtonHidden(busy)
+        .onAppear { if !initialized { selected = Set(keys); initialized = true } }
+        .sheet(isPresented: $sharing, onDismiss: {
+            cleanup(); message = shareReport; shareReport = nil
+        }) { MediaShareSheet(urls: urls) }
+        .alert("Export", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
+            Button("OK") { message = nil }
+        } message: { Text(message ?? "") }
+    }
+    private func selection(_ id: String, title: String, symbol: String) -> some View {
+        Button {
+            if selected.contains(id) { selected.remove(id) } else { selected.insert(id) }
+        } label: {
+            HStack {
+                Image(systemName: symbol)
+                Text(title).foregroundStyle(.primary)
+                Spacer()
+                Image(systemName: selected.contains(id) ? "checkmark.circle.fill" : "circle")
+            }
+        }
+    }
+    private func cleanup() {
+        for url in temporary { try? FileManager.default.removeItem(at: url) }
+        temporary = []; urls = []
+    }
+    private func run(save: Bool) {
+        busy = true
+        Task { @MainActor in
+            defer { busy = false }
+            if save {
+                let status = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
+                guard status == .authorized || status == .limited else {
+                    message = "Allow MyPropertyVisit to add photos in iPhone Settings, then try again."
+                    return
+                }
+            }
+            cleanup()
+            var failures = 0
+            var completed = 0
+            let total = selected.count
+            let items: [(String, RoomPhotoCard?, Walkthrough?)] = photos.filter { selected.contains($0.id.uuidString) }.map { ($0.id.uuidString, $0, nil) }
+                + clips.filter { selected.contains($0.id) }.map { ($0.id, nil, $0) }
+            for (id, photo, clip) in items {
+                progress = "Preparing \(completed + failures + 1) of \(total)…"
+                do {
+                    let url: URL
+                    let video: Bool
+                    if let photo {
+                        url = try await RoomPhotoStore.shared.exportCopy(photo.id)
+                        video = false
+                    } else if let clip {
+                        url = try await CompassVideoExporter.export(clip)
+                        video = true
+                    } else { continue }
+                    temporary.append(url)
+                    if save {
+                        try await PHPhotoLibrary.shared().performChanges {
+                            if video { PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: url) }
+                            else { PHAssetChangeRequest.creationRequestForAssetFromImage(atFileURL: url) }
+                        }
+                        try? FileManager.default.removeItem(at: url)
+                        selected.remove(id)
+                    } else { urls.append(url) }
+                    completed += 1
+                } catch { failures += 1 }
+            }
+            if save {
+                cleanup()
+                message = "Saved \(completed) of \(total) items to Photos." + (failures > 0 ? " \(failures) failed. You can retry those items." : "")
+            } else if !urls.isEmpty {
+                sharing = true
+                if failures > 0 { shareReport = "Prepared \(completed) items. \(failures) items could not be exported." }
+            } else { cleanup(); message = "Could not export the selected media. Please try again." }
+        }
+    }
+}
+
+struct MediaShareSheet: UIViewControllerRepresentable {
+    let urls: [URL]
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: urls, applicationActivities: nil)
+    }
+    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }

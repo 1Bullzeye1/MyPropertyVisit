@@ -144,6 +144,12 @@ actor RoomPhotoStore {
         return image
     }
 
+    func exportCopy(_ id: UUID) throws -> URL {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".jpg")
+        try FileManager.default.copyItem(at: photo(id), to: url)
+        return url
+    }
+
     func image(_ id: UUID) throws -> Data { try Data(contentsOf: photo(id)) }
     func save(_ value: RoomPhotoCard, jpeg: Data? = nil) throws {
         try value.validate()
@@ -400,6 +406,11 @@ struct RoomPhotoLibrary: View {
                             Spacer()
                             Menu {
                                 Button("View full screen", systemImage: "arrow.up.left.and.arrow.down.right") { viewingPhoto = card }
+                                NavigationLink {
+                                    MediaExportView(clips: [], photos: [card])
+                                } label: {
+                                    Label("Share or save photo", systemImage: "square.and.arrow.up")
+                                }
                                 Button("Edit details", systemImage: "pencil") { edit = card }
                                 Button("Delete room card", systemImage: "trash", role: .destructive) { pendingDelete = card }
                             } label: { Image(systemName: "ellipsis.circle").frame(width: 44, height: 44) }
@@ -419,6 +430,9 @@ struct RoomPhotoLibrary: View {
         }
         .background(Palette.background)
         .navigationTitle("Room photos").navigationBarTitleDisplayMode(.inline)
+        .toolbar { ToolbarItem(placement: .topBarTrailing) {
+            NavigationLink("Share / Save") { MediaExportView(clips: [], photos: cards) }.disabled(cards.isEmpty)
+        } }
         .toolbarBackground(Palette.background, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .fullScreenCover(item: $viewingPhoto) { card in
