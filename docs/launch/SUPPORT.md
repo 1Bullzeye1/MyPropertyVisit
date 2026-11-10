@@ -5,7 +5,7 @@
 MyPropertyVisit records offline property visits with compass photos and videos, capture sessions and manually entered room details. No login is required for the launch features.
 
 Contact: SUPPORT_EMAIL
-Publisher: OWNER_LEGAL_NAME
+Publisher: Mayuresh Sonawane
 Privacy policy: PRIVACY_URL
 
 ## Before contacting us
@@ -34,9 +34,9 @@ Dimensions and notes remain editable in MyPropertyVisit. Current exports preserv
 
 The launch app has no cloud account or complete project restore. Exports keep media copies, not all room/project information. Device backups and Photos synchronization are separate platform services. Do not delete/reinstall the app as a first troubleshooting step.
 
-## Why is a call option visible?
+## Does the app support live calling?
 
-The current working build has calling placeholders. Live video calling and invitation codes are not supported by this launch. These controls are recorded as release cleanup items and are not included in the paid feature description.
+Live video calling and invitation codes are outside this offline launch. Use walkthrough recordings and photo/video sharing to show a property.
 
 ## How do I delete data?
 

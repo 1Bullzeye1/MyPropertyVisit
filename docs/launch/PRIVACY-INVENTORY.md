@@ -28,7 +28,7 @@ Apple defines collection around transmission off-device with developer/partner a
 
 ## Required-reason API audit
 
-UserDefaults and file modification-date access are present. No first-party PrivacyInfo.xcprivacy file was found during this review. Before submission, inventory required-reason APIs in the final target/dependencies, add the applicable approved reasons, include the manifest in the archived app and validate the archive privacy report. Do not copy reason codes without checking their actual allowed use. This is an open release task, not a change made by documentation.
+UserDefaults and file modification-date access are present. PrivacyInfo.xcprivacy now declares CA92.1 for local UserDefaults and C617.1 for local file timestamps, with no app tracking/collected data types. It is included in the target Resources phase. Before submission, verify the final archive/dependencies and validate its privacy report. Do not copy reason codes without checking their actual allowed use. The unsigned Release archive 1.0 (3) was checked for the embedded manifest and its declarations. Signed App Store validation remains open.
 
 Source: [Required-reason API documentation](https://developer.apple.com/documentation/bundleresources/describing-use-of-required-reason-api).
 

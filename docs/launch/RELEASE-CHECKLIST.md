@@ -7,17 +7,20 @@ Launch scope is frozen to current offline features. Open items below do not auth
 - [x] Capture the offline launch scope, explicit exclusions and limitations.
 - [x] Record owner decision: USD 4.99 one-time iOS paid download.
 - [x] Prepare user guide, listing, privacy/support drafts and privacy inventory.
-- [ ] Finalize legal seller identity, country, support mailbox, brand/domain and launch territories.
+- [x] Confirm individual seller identity: Mayuresh Sonawane.
+- [ ] Finalize country, public support mailbox and launch territories. A custom domain is optional.
 - [x] Select product name: MyPropertyVisit.
-- [ ] Complete store-name/brand review and confirm domain registration before public branding.
+- [ ] Confirm App Store name availability and complete the remaining brand review; use the included website address for launch if no custom domain is purchased.
 
 ## Implementation readiness
 
-- [ ] Replace Start a property call with an accurate property-creation label; remove Join a call, Live tours and coming-soon calling claims from launch UI.
+- [x] Replace Start a property call with Add a property; remove Join a call, Live tours and coming-soon calling claims from iOS launch UI.
 - [ ] Add accessible public privacy/support links once final URLs exist.
-- [ ] Audit required-reason APIs and include/validate PrivacyInfo.xcprivacy in the archive.
-- [ ] Confirm profile controls remain clearly local and do not imply authentication.
-- [ ] Ensure backup/export limitations and manual dimension entry are discoverable before reliance on the app.
+- [x] Add first-party privacy manifest for app-local UserDefaults (CA92.1) and file timestamps (C617.1).
+- [x] Confirm manifest in unsigned Release archive 1.0 (3).
+- [ ] Validate signed upload/archive through App Store Connect after membership is active.
+- [x] Label the profile as local, with no login required.
+- [x] Add Settings → About & your data for manual dimensions, local storage and media-export limitations.
 - [ ] Review video/session deletion limitation and confirm policy accuracy. A deletion feature is not claimed as implemented.
 
 ## Test matrix — record device, OS, build, result and evidence
@@ -66,7 +69,7 @@ Previous evidence: iOS Release builds and photo/export-copy regression checks pa
 
 | Field | Value |
 | --- | --- |
-| Version / build | Pending final archive; source currently 1.0 / 2 |
+| Version / build | Pending final archive; source currently 1.0 / 3 |
 | Release commit / tag | Pending |
 | Archive / symbols location | Pending |
 | TestFlight build and acceptance evidence | Pending |

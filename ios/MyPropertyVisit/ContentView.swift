@@ -48,7 +48,6 @@ struct ContentView: View {
     private enum MediaRoute: Hashable { case recorder, library }
     @State private var properties: [Property]
     @State private var create = false
-    @State private var join = false
 
     init(properties: [Property]) {
         _properties = State(initialValue: properties)
@@ -92,10 +91,10 @@ struct ContentView: View {
                         Text("Explore land, flats and buildings with the details that matter.")
                             .foregroundStyle(.white.opacity(0.8))
                         HStack(spacing: 18) {
-                            Label("Live tours", systemImage: "video")
+                            Label("Walkthroughs", systemImage: "video")
                             Label("Directions", systemImage: "safari")
                         }.font(.caption)
-                        Label("Measurements", systemImage: "ruler").font(.caption)
+                        Label("Manual dimensions", systemImage: "ruler").font(.caption)
                     }
                     .padding(26).frame(maxWidth: .infinity, alignment: .leading)
                     .foregroundStyle(.white)
@@ -115,10 +114,7 @@ struct ContentView: View {
                     Text("Take a closer look").font(.title3.bold()).foregroundStyle(Palette.ink)
                     VStack(spacing: 14) {
                         Button { create = true } label: {
-                            row("Start a property call", "Prepare your property for a tour", "video.badge.plus", primary: true)
-                        }.buttonStyle(.plain)
-                        Button { join = true } label: {
-                            row("Join a call", "Enter an invitation code", "person.2")
+                            row("Add a property", "Save details and prepare your visit", "building.2.crop.circle", primary: true)
                         }.buttonStyle(.plain)
                         NavigationLink {
                             SavedPropertiesView(properties: properties) { offsets in
@@ -149,7 +145,6 @@ struct ContentView: View {
             .sheet(isPresented: $create) {
                 PrepareProperty { property in store([property] + properties) }
             }
-            .sheet(isPresented: $join) { JoinPropertyCall() }
         }.tint(Palette.accent)
     }
     private func row(_ title: String, _ subtitle: String, _ symbol: String, primary: Bool = false) -> some View {
@@ -302,8 +297,8 @@ private struct PrepareProperty: View {
                     TextField("Area or address", text: $location)
                 }
                 Section {
-                    Label("Video calling is coming next", systemImage: "video")
-                    Text("Save your property now. Live calls are coming soon. You can already take photos, record compass walkthroughs and add room dimensions.")
+                    Label("Capture a property visit", systemImage: "camera")
+                    Text("Save the property, then take compass photos, record silent walkthroughs and add room dimensions you have measured.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
                 Section {
@@ -331,7 +326,6 @@ private struct PropertyDetails: View {
                 LabeledContent("Location", value: property.location)
             }
             Section("Tour tools") {
-                Label("Video call · Coming soon", systemImage: "video")
                 NavigationLink { WalkthroughView(propertyID: property.id.uuidString) } label: { Label("Record walkthrough with compass", systemImage: "video.circle") }
                 NavigationLink { RoomPhotoLibrary(propertyID: property.id.uuidString) } label: {
                     Label("Room photos & dimensions", systemImage: "photo.on.rectangle")
@@ -346,28 +340,6 @@ private struct PropertyDetails: View {
     }
 }
 
-private struct JoinPropertyCall: View {
-    @Environment(\.dismiss) private var dismiss
-    @State private var code = ""
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section("Invitation code") {
-                    TextField("Enter a call code", text: $code)
-                        .textInputAutocapitalization(.characters).autocorrectionDisabled()
-                }
-                Section {
-                    Label("Call joining is coming soon", systemImage: "video")
-                    Text("Live calling is not connected yet. Invitation codes cannot be used at this stage.")
-                        .font(.footnote).foregroundStyle(.secondary)
-                }
-            }
-            .navigationTitle("Join a property call").navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
-        }
-    }
-}
-
 private struct LensSettingsView: View {
     @AppStorage("propertylens.theme.v1") private var theme = "system"
     var body: some View {
@@ -378,9 +350,13 @@ private struct LensSettingsView: View {
             NavigationLink { LocalProfileView() } label: {
                 LensMenuRow("Manage local profile", "Edit the name, email and role stored on this device", "person.crop.circle")
             }.buttonStyle(.plain)
-            Text("Account status: Not signed in")
+            Text("Local profile · No login required")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+
+            NavigationLink { LaunchInformationView() } label: {
+                LensMenuRow("About & your data", "Offline storage, measurements and exports", "info.circle")
+            }.buttonStyle(.plain)
 
             Text("Appearance").font(.headline).foregroundStyle(Palette.ink).accessibilityAddTraits(.isHeader)
             VStack(alignment: .leading, spacing: 12) {
@@ -450,5 +426,35 @@ private struct LocalProfileView: View {
                 name = ""; email = ""; role = "Buyer"
             }
         }
+    }
+}
+
+
+private struct LaunchInformationView: View {
+    private var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0" }
+    var body: some View {
+        List {
+            Section("MyPropertyVisit") {
+                LabeledContent("Version", value: version)
+                Text("Record property visits, keep compass photos and silent walkthroughs together, and add room details manually. No online account or login is required.")
+            }
+            Section("Measurements and directions") {
+                Text("Dimensions are entered by you, in metres or decimal feet. The area calculation assumes a rectangle. Verify important measurements independently.")
+                Text("Compass directions refer to magnetic north and depend on the device's sensors and surroundings. Missing readings are shown as unavailable.")
+            }
+            Section("Your records stay locally") {
+                Text("Properties, your optional profile, capture sessions, room details and media are stored in this app on your device. This version has no app-managed cloud synchronization or complete project backup and restore.")
+                Text("Deleting the app or losing your device can result in lost records. Device backups and Photos synchronization are separate services managed through your device settings.")
+            }
+            Section("What exports include") {
+                Text("Shared and saved photos and videos keep the embedded compass. Room dimensions, notes and property/session relationships remain inside MyPropertyVisit; they are not automatically printed over exported media.")
+                Text("Saving media to Photos keeps separate media copies. It does not create a full project backup. Export important media before deleting the app.")
+            }
+            Section("Clearing data") {
+                Text("Clearing your local profile keeps properties and media. Deleting a property record does not necessarily delete its captures. Exported or shared copies must be managed separately in their destination.")
+            }
+        }
+        .navigationTitle("About & your data")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }

@@ -21,7 +21,7 @@ Baseline date: 10 November 2026. Price: USD 4.99 paid download, subject to store
 
 Live calls, joining calls with codes, contact sync, verified accounts, cloud backup, cross-device or team sync, AR/automatic measurements, automatic room recognition, floor plans, PDF property reports, complete project backup/restore, subscriptions and website checkout.
 
-Calling screens remain placeholders in current source. They must be hidden or relabelled accurately before store submission; this documentation does not claim they were removed. No new feature is required merely to align the current UI with this scope.
+The iOS launch interface now uses Add a property and Walkthroughs. Join-call and coming-soon calling controls have been removed. No online calling is advertised as available.
 
 ## Limitations to disclose
 
@@ -35,6 +35,6 @@ Calling screens remain placeholders in current source. They must be hidden or re
 
 ## Technical baseline
 
-Bundle identifier: com.infinity-propview.app. Marketing version currently 1.0, build currently 2; assign a unique build number before upload. Deployment target iOS 17.0. Project targets iPhone and iPad; final iPad layout/orientation acceptance remains required.
+Bundle identifier: com.infinity-propview.app. Marketing version currently 1.0, build currently 3; assign a unique build number before upload. Deployment target iOS 17.0. Project targets iPhone and iPad; final iPad layout/orientation acceptance remains required.
 
 Reference commit ecbc91a is the prior checkpoint, not a commit of all current launch changes. Current release source must be captured after outstanding changes are reviewed.

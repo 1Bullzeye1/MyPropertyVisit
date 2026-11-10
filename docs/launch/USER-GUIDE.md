@@ -4,7 +4,7 @@ MyPropertyVisit helps you record property visits, keep compass photos/videos tog
 
 ## Prepare a property
 
-Open Saved properties to review existing records. In the current UI, **Start a property call** opens the property preparation form; save the property name, type and area/address there. Despite that button's current wording, it does not start a live call. The release checklist requires this wording to be corrected before submission. Open a saved property's tools to create captures associated with that property. Recording directly from Home can produce unassigned captures.
+Open **Add a property** to save a property name, type and area/address. Open **Saved properties** to review existing records. Open a property's tools to create captures associated with that property. Recording directly from Home can produce unassigned captures.
 
 ## Record a visit
 
@@ -38,7 +38,7 @@ Saved files preserve the embedded compass. Room dimensions and notes remain insi
 
 ## Profile, appearance and deletion
 
-Settings offers a local profile and System/Light/Dark theme. The optional profile is not a verified account. **Clear local profile** clears those profile fields but keeps saved properties and media.
+Settings offers a local profile, an About & your data explanation and System/Light/Dark theme. The optional profile is not a verified account. **Clear local profile** clears those profile fields but keeps saved properties and media.
 
 Delete a room photo through its menu. In Saved properties, swipe to delete a property record; associated captures may remain. This launch source does not provide a dedicated video/session deletion control. To remove the whole local app container on iOS, use Delete App rather than Offload App; export anything needed first. Copies in Photos, share destinations and device backups are separate and must be managed there.
 

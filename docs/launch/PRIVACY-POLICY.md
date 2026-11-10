@@ -3,7 +3,7 @@
 **Draft for owner review. Resolve every uppercase placeholder before public publication.**
 
 Effective date: EFFECTIVE_DATE
-Publisher: OWNER_LEGAL_NAME, OWNER_COUNTRY
+Publisher: Mayuresh Sonawane, OWNER_COUNTRY
 Privacy and support contact: SUPPORT_EMAIL
 
 ## What the app does
@@ -50,4 +50,4 @@ We use the operating system's app storage and permission controls. Keep your dev
 
 ## Changes and contact
 
-We will revise this policy when the product or its handling of information changes. The effective date identifies the published version. Contact OWNER_LEGAL_NAME at SUPPORT_EMAIL with privacy questions or requests about support correspondence.
+We will revise this policy when the product or its handling of information changes. The effective date identifies the published version. Contact Mayuresh Sonawane at SUPPORT_EMAIL with privacy questions or requests about support correspondence.

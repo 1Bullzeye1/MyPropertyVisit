@@ -42,8 +42,8 @@ USD 4.99, one-time paid download on iOS. No recurring billing. Configure price/t
 
 | Field | Current value |
 | --- | --- |
-| Legal publisher/seller name | OWNER_LEGAL_NAME — pending |
-| Individual or organization | Pending |
+| Legal publisher/seller name | Mayuresh Sonawane — supplied by owner |
+| Individual or organization | Individual — agreed for first release |
 | Actual operating country | OWNER_COUNTRY — pending; timezone is not legal residence evidence |
 | Public support/privacy email | SUPPORT_EMAIL — pending |
 | Domain and website ownership | mypropertyvisit.com selected candidate; not registered |

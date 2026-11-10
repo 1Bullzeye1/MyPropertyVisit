@@ -13,7 +13,7 @@ Prepared 10 November 2026. Draft for the frozen offline launch scope. Brand/stor
 | Price | USD 4.99 one-time paid download; configure regional prices in store |
 | Version | 1.0; assign unique upload build number |
 | Bundle ID | com.infinity-propview.app — preserve continuity unless a deliberate migration is approved |
-| Copyright | 2026 OWNER_LEGAL_NAME |
+| Copyright | 2026 Mayuresh Sonawane |
 | Support URL | SUPPORT_URL |
 | Privacy URL | PRIVACY_URL |
 | Marketing URL | WEBSITE_URL |
@@ -74,7 +74,7 @@ No login, demo credentials, MyPropertyVisit backend or subscription is required.
 
 Open Photos & videos to find the visit. Edit a room photo, then assign another photo to the same room to verify shared dimensions. Open Share or save media, choose files and save to Photos; add-only Photos permission is requested. Exported videos render recorded bearings; photos have their compass embedded. Room measurements remain app records rather than export overlays.
 
-Reviewer contact: REVIEW_CONTACT_NAME / REVIEW_CONTACT_EMAIL / REVIEW_CONTACT_PHONE — enter actual values privately in App Store Connect. Unfinished calling controls must be cleaned up before using these review notes for submission.
+Reviewer contact: REVIEW_CONTACT_NAME / REVIEW_CONTACT_EMAIL / REVIEW_CONTACT_PHONE — enter actual values privately in App Store Connect. iOS calling placeholders have been removed; property preparation is labelled Add a property. Final signed-build review and working public policy/support links remain required.
 
 ## Sources
 

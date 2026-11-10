@@ -2,12 +2,14 @@
 
 Prepared 10 November 2026. Baseline: current local source, including photo/video sharing and saving to Photos/Gallery. This is a launch scope freeze, not confirmation that store review or release testing has finished.
 
+For the shortest route to a paid release, follow [Start here](START-HERE.md).
+
 ## Decisions
 
 - iOS launch price: **USD 4.99, one-time paid download**. Configure regional prices in App Store Connect. No subscription or in-app purchase is part of this launch.
 - Product: offline property visits, compass media, manually entered room details and media exports.
 - Selected product name: **MyPropertyVisit**, approved 10 November 2026. Matching .com registration and final brand clearance remain pending; preliminary web/registry screening is not a reservation.
-- Public seller identity, country, support mailbox and domain: owner decision pending. Never publish unresolved template tokens.
+- Public seller identity: Mayuresh Sonawane, individual. Country and dedicated support mailbox are pending. A custom domain is optional. Never publish unresolved template tokens.
 - iOS repository contains iOS documentation only. Android-specific release documents are in the separate Android repository. Website source is in the sibling MyPropertyVisit-Website folder.
 
 See [brand change and compatibility notes](BRAND-RENAME.md).
