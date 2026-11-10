@@ -16,7 +16,7 @@ Source review: 10 November 2026. This is an engineering evidence sheet, not a su
 | Photos save | User-selected export | Apple Photos via add-only access | MediaExportView, NSPhotoLibraryAddUsageDescription |
 | Sharing | User-selected files | Destination chosen in system share sheet | UIActivityViewController |
 | Diagnostics | Startup timings/messages | OS logging | MyPropertyVisitApp Logger; no third-party reporting SDK found |
-| Support correspondence | User voluntarily emails support | Future chosen mailbox provider | Operational setup pending |
+| Support correspondence | User voluntarily emails support | Gmail mailbox mypropertyvisit05@gmail.com | Public contact authorized by owner; mailbox reception test pending |
 
 ## Source review findings
 

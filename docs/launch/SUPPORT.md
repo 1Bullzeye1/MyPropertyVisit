@@ -1,12 +1,12 @@
 # MyPropertyVisit support
 
-**Support-page draft. Publish only after SUPPORT_EMAIL and the owner identity are finalized.**
-
 MyPropertyVisit records offline property visits with compass photos and videos, capture sessions and manually entered room details. No login is required for the launch features.
 
-Contact: SUPPORT_EMAIL
-Publisher: Mayuresh Sonawane
-Privacy policy: PRIVACY_URL
+Contact: [mypropertyvisit05@gmail.com](mailto:mypropertyvisit05@gmail.com)
+
+Publisher: Mayuresh Sonawane, India
+
+[Privacy policy](https://mypropertyvisit.peakedpanel4.chatgpt.site/privacy/)
 
 ## Before contacting us
 

@@ -358,6 +358,16 @@ private struct LensSettingsView: View {
                 LensMenuRow("About & your data", "Offline storage, measurements and exports", "info.circle")
             }.buttonStyle(.plain)
 
+            NavigationLink { PrivacyPolicyView() } label: {
+                LensMenuRow("Privacy policy", "Read how your information is handled", "hand.raised")
+            }.buttonStyle(.plain)
+            Link(destination: URL(string: "https://mypropertyvisit.peakedpanel4.chatgpt.site/support/")!) {
+                LensMenuRow("Support & help", "Troubleshooting and export guidance", "questionmark.circle")
+            }.buttonStyle(.plain)
+            Link(destination: URL(string: "mailto:mypropertyvisit05@gmail.com?subject=MyPropertyVisit%20support")!) {
+                LensMenuRow("Contact support", "mypropertyvisit05@gmail.com", "envelope")
+            }.buttonStyle(.plain)
+
             Text("Appearance").font(.headline).foregroundStyle(Palette.ink).accessibilityAddTraits(.isHeader)
             VStack(alignment: .leading, spacing: 12) {
                 Label("Theme", systemImage: "circle.lefthalf.filled").font(.headline).foregroundStyle(Palette.ink)
@@ -456,5 +466,43 @@ private struct LaunchInformationView: View {
         }
         .navigationTitle("About & your data")
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+
+private struct PrivacyPolicyView: View {
+    @State private var policy: String?
+    @State private var failed = false
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                if let policy {
+                    ForEach(Array(policy.components(separatedBy: "\n\n").enumerated()), id: \.offset) { _, paragraph in
+                        if paragraph.hasPrefix("## ") {
+                            Text(String(paragraph.dropFirst(3))).font(.headline).padding(.top, 8)
+                        } else if paragraph.hasPrefix("# ") {
+                            Text(String(paragraph.dropFirst(2))).font(.title2.bold())
+                        } else {
+                            Text((try? AttributedString(markdown: paragraph, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(paragraph))
+                                .font(.body).textSelection(.enabled)
+                        }
+                    }
+                } else if failed {
+                    Text("The privacy policy could not be loaded.")
+                    Link("Read privacy policy online", destination: URL(string: "https://mypropertyvisit.peakedpanel4.chatgpt.site/privacy/")!)
+                } else { ProgressView("Loading privacy policy") }
+                Link("Contact privacy support", destination: URL(string: "mailto:mypropertyvisit05@gmail.com?subject=MyPropertyVisit%20privacy")!)
+            }.frame(maxWidth: .infinity, alignment: .leading).padding(22)
+        }
+        .navigationTitle("Privacy policy")
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            guard policy == nil, !failed else { return }
+            guard let url = Bundle.main.url(forResource: "PrivacyPolicy", withExtension: "md") else { failed = true; return }
+            let loaded = await Task.detached(priority: .userInitiated) { try? String(contentsOf: url, encoding: .utf8) }.value
+            guard !Task.isCancelled else { return }
+            policy = loaded
+            failed = loaded == nil
+        }
     }
 }

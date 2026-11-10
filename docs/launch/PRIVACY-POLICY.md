@@ -1,10 +1,10 @@
 # MyPropertyVisit privacy policy
 
-**Draft for owner review. Resolve every uppercase placeholder before public publication.**
+Effective date: 10 November 2026
 
-Effective date: EFFECTIVE_DATE
-Publisher: Mayuresh Sonawane, OWNER_COUNTRY
-Privacy and support contact: SUPPORT_EMAIL
+Publisher: Mayuresh Sonawane, India
+
+Privacy and support contact: [mypropertyvisit05@gmail.com](mailto:mypropertyvisit05@gmail.com)
 
 ## What the app does
 
@@ -38,11 +38,11 @@ The publisher has no MyPropertyVisit server copy to delete or restore. A media e
 
 ## Contacting support
 
-If you contact SUPPORT_EMAIL, we receive the email address, message and attachments you choose to send. We use this information to answer your request and investigate the issue. It is handled by the publisher's chosen email provider and retained as needed to resolve support matters and meet applicable recordkeeping obligations. You may request deletion of support correspondence by contacting the same address, subject to applicable obligations. Send only information needed for the request; avoid private property footage unless it is essential.
+If you contact mypropertyvisit05@gmail.com, we receive the email address, message and attachments you choose to send. We use this information to answer your request and investigate the issue. It is handled through Gmail, the publisher's support email provider and retained as needed to resolve support matters and meet applicable recordkeeping obligations. You may request deletion of support correspondence by contacting the same address, subject to applicable obligations. Send only information needed for the request; avoid private property footage unless it is essential.
 
 ## Website and hosting
 
-The marketing/support website is separate from local app storage. Its hosting provider may process technical request information such as IP addresses, request times and browser information to deliver and secure the website. A private preview may require provider sign-in. The current website draft does not add advertising or analytics scripts, contact forms or newsletter collection. Update this policy before adding services that change these practices. A support email opens your email service rather than an in-app upload endpoint.
+The marketing/support website is separate from local app storage. Its hosting provider may process technical request information such as IP addresses, request times and browser information to deliver and secure the website. A private preview may require provider sign-in. The website does not add advertising or analytics scripts, contact forms or newsletter collection. Update this policy before adding services that change these practices. A support email opens your email service rather than an in-app upload endpoint.
 
 ## Security and use by children
 
@@ -50,4 +50,4 @@ We use the operating system's app storage and permission controls. Keep your dev
 
 ## Changes and contact
 
-We will revise this policy when the product or its handling of information changes. The effective date identifies the published version. Contact Mayuresh Sonawane at SUPPORT_EMAIL with privacy questions or requests about support correspondence.
+We will revise this policy when the product or its handling of information changes. The effective date identifies the published version. Contact Mayuresh Sonawane at mypropertyvisit05@gmail.com with privacy questions or requests about support correspondence.

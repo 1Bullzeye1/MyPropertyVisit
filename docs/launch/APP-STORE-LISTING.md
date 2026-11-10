@@ -14,9 +14,9 @@ Prepared 10 November 2026. Draft for the frozen offline launch scope. Brand/stor
 | Version | 1.0; assign unique upload build number |
 | Bundle ID | com.infinity-propview.app — preserve continuity unless a deliberate migration is approved |
 | Copyright | 2026 Mayuresh Sonawane |
-| Support URL | SUPPORT_URL |
-| Privacy URL | PRIVACY_URL |
-| Marketing URL | WEBSITE_URL |
+| Support URL | https://mypropertyvisit.peakedpanel4.chatgpt.site/support/ |
+| Privacy URL | https://mypropertyvisit.peakedpanel4.chatgpt.site/privacy/ |
+| Marketing URL | https://mypropertyvisit.peakedpanel4.chatgpt.site/ |
 | Age rating | Complete Apple's actual questionnaire; do not infer a rating from this draft |
 | Territories | Owner decision pending |
 | Release | Manual release after review and final owner sign-off |

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		000000000000000000000043 /* PrivacyPolicy.md in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000042 /* PrivacyPolicy.md */; };
 		000000000000000000000041 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000040 /* PrivacyInfo.xcprivacy */; };
 		000000000000000000000035 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000034 /* Assets.xcassets */; };
 		000000000000000000000031 = {isa = PBXBuildFile; fileRef = 000000000000000000000030; };
@@ -16,6 +17,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		000000000000000000000042 /* PrivacyPolicy.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PrivacyPolicy.md; sourceTree = "<group>"; };
 		000000000000000000000040 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		000000000000000000000034 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		000000000000000000000030 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoomPhotos.swift; sourceTree = "<group>"; };
@@ -47,6 +49,7 @@
 		000000000000000000000003 /* MyPropertyVisit */ = {
 			isa = PBXGroup;
 			children = (
+				000000000000000000000042 /* PrivacyPolicy.md */,
 				000000000000000000000040 /* PrivacyInfo.xcprivacy */,
 				000000000000000000000020 /* WalkthroughView.swift */,
 				000000000000000000000030,
@@ -117,6 +120,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				000000000000000000000043 /* PrivacyPolicy.md in Resources */,
 				000000000000000000000041 /* PrivacyInfo.xcprivacy in Resources */,
 				000000000000000000000035 /* Assets.xcassets in Resources */,
 			);
@@ -224,7 +228,7 @@
 			buildSettings = {
 				CLANG_ENABLE_OBJC_WEAK = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -251,7 +255,7 @@
 			buildSettings = {
 				CLANG_ENABLE_OBJC_WEAK = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				GENERATE_INFOPLIST_FILE = YES;

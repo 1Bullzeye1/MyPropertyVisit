@@ -35,6 +35,6 @@ The iOS launch interface now uses Add a property and Walkthroughs. Join-call and
 
 ## Technical baseline
 
-Bundle identifier: com.infinity-propview.app. Marketing version currently 1.0, build currently 3; assign a unique build number before upload. Deployment target iOS 17.0. Project targets iPhone and iPad; final iPad layout/orientation acceptance remains required.
+Bundle identifier: com.infinity-propview.app. Marketing version currently 1.0, build currently 4; assign a unique build number before upload. Deployment target iOS 17.0. Project targets iPhone and iPad; final iPad layout/orientation acceptance remains required.
 
 Reference commit ecbc91a is the prior checkpoint, not a commit of all current launch changes. Current release source must be captured after outstanding changes are reviewed.

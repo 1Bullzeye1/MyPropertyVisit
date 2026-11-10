@@ -6,7 +6,7 @@ The immediate goal is an approved paid iOS app, with existing offline features. 
 
 ## Owner actions in order
 
-1. Create a dedicated support Gmail mailbox. Send only its public address and your actual country of residence/operation so the publisher/privacy details can be finished. Do not send the password.
+1. Completed: public support email mypropertyvisit05@gmail.com and country India have been supplied. Publisher: Mayuresh Sonawane. Confirm the mailbox can receive messages; keep its password private.
 2. Enroll in the standard [Apple Developer Program](https://developer.apple.com/programs/enroll/) as an individual under your verified legal name. Apple lists USD 99 per year or local currency where available. The public seller name will be your legal name. Complete identity verification and membership payment directly with Apple; do not buy the Enterprise program.
 3. When enrollment is active, open [App Store Connect](https://appstoreconnect.apple.com/). In Business, accept the Paid Apps Agreement, then complete the tax and banking information requested for your account. Enter it only in the official portal. Refer to [Apple's agreement steps](https://developer.apple.com/help/app-store-connect/manage-agreements/sign-and-update-agreements) and [payment setup](https://developer.apple.com/help/app-store-connect/getting-paid/overview-of-receiving-payments).
 4. Review the finished support/privacy pages and make them publicly readable before submitting their URLs to Apple. The current private website URL cannot serve as a public support/privacy endpoint. A custom .com is optional. The site audience remains private until an explicit owner instruction to make it public.
@@ -20,7 +20,8 @@ The immediate goal is an approved paid iOS app, with existing offline features. 
 - [x] Settings → About & your data explains manual dimensions, compass limits, local storage and media-export limitations.
 - [x] First-party privacy manifest added for local UserDefaults and file timestamps.
 - [x] Build unsigned Release archive 1.0 (3); verify embedded privacy manifest/reasons and bundle identifier. Photo regression checks passed. Signed distribution/store validation remains pending.
-- [ ] Finalize policy/support contact fields and public URLs; add accessible policy/support links in the app.
+- [x] Apply approved publisher/contact details and include offline privacy policy plus support/email links in iOS Settings.
+- [ ] Make website policy/support URLs public after explicit owner instruction.
 - [ ] Capture real screenshots from the final UI and finish store questionnaires/review notes.
 - [ ] Set distribution signing after membership is active; create and validate the signed upload archive.
 - [ ] Upload, test the submission candidate, submit to Apple and inspect actual review outcome.
@@ -39,8 +40,8 @@ Replace APP_STORE_URL only with the actual published link. No messages have been
 
 ## Status to report back
 
-- Public support Gmail: pending.
-- Country: pending.
+- Public support Gmail: mypropertyvisit05@gmail.com, authorized for publication.
+- Country: India, supplied by owner.
 - Apple Developer enrollment: not started/confirmed active yet.
 - Paid Apps agreement, tax and banking: pending owner completion.
 - Signed upload and App Store approval: pending.

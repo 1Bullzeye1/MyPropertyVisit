@@ -9,7 +9,7 @@ For the shortest route to a paid release, follow [Start here](START-HERE.md).
 - iOS launch price: **USD 4.99, one-time paid download**. Configure regional prices in App Store Connect. No subscription or in-app purchase is part of this launch.
 - Product: offline property visits, compass media, manually entered room details and media exports.
 - Selected product name: **MyPropertyVisit**, approved 10 November 2026. Matching .com registration and final brand clearance remain pending; preliminary web/registry screening is not a reservation.
-- Public seller identity: Mayuresh Sonawane, individual. Country and dedicated support mailbox are pending. A custom domain is optional. Never publish unresolved template tokens.
+- Public seller identity: Mayuresh Sonawane, individual. Country: India. Public support mailbox: mypropertyvisit05@gmail.com. A custom domain is optional. Never publish unresolved template tokens.
 - iOS repository contains iOS documentation only. Android-specific release documents are in the separate Android repository. Website source is in the sibling MyPropertyVisit-Website folder.
 
 See [brand change and compatibility notes](BRAND-RENAME.md).
@@ -19,12 +19,12 @@ See [brand change and compatibility notes](BRAND-RENAME.md).
 | File | Purpose | Status |
 | --- | --- | --- |
 | [Launch scope](LAUNCH-SCOPE.md) | Included features, exclusions and accepted limitations | Prepared against source |
-| [Owner setup](OWNER-SETUP.md) | Seller identity, domain, email and pricing setup | Guidance; owner inputs pending |
+| [Owner setup](OWNER-SETUP.md) | Seller identity, domain, email and pricing setup | Publisher/contact confirmed; Apple setup pending |
 | [User guide](USER-GUIDE.md) | Current paths, permissions, capture and exports | Prepared; walkthrough on release build pending |
-| [Privacy policy](PRIVACY-POLICY.md) | App handling, sharing, retention, support and website distinction | Draft; identity/contact fields pending |
-| [Support content](SUPPORT.md) | Help page and troubleshooting | Draft; contact details pending |
-| [Store listing](APP-STORE-LISTING.md) | Copy, screenshots and review notes | Copy prepared; screenshots/contact URLs pending |
-| [Privacy inventory](PRIVACY-INVENTORY.md) | Evidence and proposed privacy answers | Source review; archive verification pending |
+| [Privacy policy](PRIVACY-POLICY.md) | App handling, sharing, retention, support and website distinction | Contact fields complete; public access pending |
+| [Support content](SUPPORT.md) | Help page and troubleshooting | Contact fields complete; public access pending |
+| [Store listing](APP-STORE-LISTING.md) | Copy, screenshots and review notes | Copy and URL candidates prepared; screenshots/public access pending |
+| [Privacy inventory](PRIVACY-INVENTORY.md) | Evidence and proposed privacy answers | Source review and unsigned archive checked; store validation pending |
 | [Release checklist](RELEASE-CHECKLIST.md) | SDLC gates, acceptance tests and release record | Open release actions explicitly listed |
 
 ## Publication rules

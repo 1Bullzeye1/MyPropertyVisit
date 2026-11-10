@@ -8,14 +8,16 @@ Launch scope is frozen to current offline features. Open items below do not auth
 - [x] Record owner decision: USD 4.99 one-time iOS paid download.
 - [x] Prepare user guide, listing, privacy/support drafts and privacy inventory.
 - [x] Confirm individual seller identity: Mayuresh Sonawane.
-- [ ] Finalize country, public support mailbox and launch territories. A custom domain is optional.
+- [x] Confirm country India and public support email mypropertyvisit05@gmail.com.
+- [ ] Finalize launch territories. A custom domain is optional.
 - [x] Select product name: MyPropertyVisit.
 - [ ] Confirm App Store name availability and complete the remaining brand review; use the included website address for launch if no custom domain is purchased.
 
 ## Implementation readiness
 
 - [x] Replace Start a property call with Add a property; remove Join a call, Live tours and coming-soon calling claims from iOS launch UI.
-- [ ] Add accessible public privacy/support links once final URLs exist.
+- [x] Add an offline-readable privacy policy, support website link and public support mail link in iOS Settings.
+- [ ] Make website pages publicly readable before submitting their URLs to Apple.
 - [x] Add first-party privacy manifest for app-local UserDefaults (CA92.1) and file timestamps (C617.1).
 - [x] Confirm manifest in unsigned Release archive 1.0 (3).
 - [ ] Validate signed upload/archive through App Store Connect after membership is active.
@@ -69,7 +71,7 @@ Previous evidence: iOS Release builds and photo/export-copy regression checks pa
 
 | Field | Value |
 | --- | --- |
-| Version / build | Pending final archive; source currently 1.0 / 3 |
+| Version / build | Pending final archive; source currently 1.0 / 4 |
 | Release commit / tag | Pending |
 | Archive / symbols location | Pending |
 | TestFlight build and acceptance evidence | Pending |

@@ -44,12 +44,12 @@ USD 4.99, one-time paid download on iOS. No recurring billing. Configure price/t
 | --- | --- |
 | Legal publisher/seller name | Mayuresh Sonawane — supplied by owner |
 | Individual or organization | Individual — agreed for first release |
-| Actual operating country | OWNER_COUNTRY — pending; timezone is not legal residence evidence |
-| Public support/privacy email | SUPPORT_EMAIL — pending |
+| Actual operating country | India — supplied by owner |
+| Public support/privacy email | mypropertyvisit05@gmail.com — authorized by owner |
 | Domain and website ownership | mypropertyvisit.com selected candidate; not registered |
-| Public support URL | SUPPORT_URL — pending |
-| Public privacy URL | PRIVACY_URL — pending |
-| Privacy policy effective date | EFFECTIVE_DATE — set for publication |
+| Public support URL | https://mypropertyvisit.peakedpanel4.chatgpt.site/support/ — prepared; public access pending |
+| Public privacy URL | https://mypropertyvisit.peakedpanel4.chatgpt.site/privacy/ — prepared; public access pending |
+| Privacy policy effective date | 10 November 2026 |
 | Review contact name/email/phone | Pending; enter privately in App Store Connect |
 | Launch territories | Pending |
 
